@@ -1,0 +1,56 @@
+ToonYou:
+  base: ""
+  path: "models/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  motion_module:
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-200.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-180.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-160.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-140.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-120.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-100.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-80.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-60.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-40.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-20.ckpt"
+
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-10.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-20.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-30.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-40.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-50.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-60.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-70.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-80.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-90.ckpt"
+    - "outputs/training_wink512_v2-2023-08-28T16-24-44/checkpoints/checkpoint-epoch-100.ckpt"
+    
+    # - "models/Motion_Module/mm_sd_v14.ckpt"
+    # - "models/Motion_Module/mm_sd_v15.ckpt"
+
+
+  seed:           1921892841
+                  # [10788741199826055526, 6520604954829636163, 6519455744612555650, 16372571278361863751,
+                  # 0,1,2,42]
+  steps:          25
+  guidance_scale: 7.5
+
+  prompt:
+    - "1girl, upper body, beautiful face, slight smile, straight hair, long hair, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, <lora:38:1>"
+    - "1girl is winking, upper body, beautiful face, slight smile, straight hair, long hair, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, <lora:38:1>"
+    - "a girl is winking, upper body, beautiful face, slight smile, straight hair, long hair, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, <lora:38:1>"
+    - "a person is winking."
+
+  n_prompt:
+    - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+    - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+    - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+    - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+
+# MJ:
+# #### 灰色证件照
+# 模版图：
+# ![](http://s3-x.mcd.megvii-inc.com/mcd-codimd/uploads/upload_4af5b8449392a43e24e7b4cd76401918.jpg)
+# 生成信息：
+# Negative prompt: (worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw
+# Steps: 27, Sampler: Euler a, CFG scale: 7, Seed: 1921892841, Size: 512x832, Model hash: fe54b5d04d, Model: civitai_leosamsMoonfile_filmGrain20, 
+# Denoising strength: 0.5, Clip skip: 2, Init image hash: 8af0b2374b228ca74529455f721b2c6f, Lora hashes: "38: 26d897afcb76", Version: v1.4.1-201-g14cf434b

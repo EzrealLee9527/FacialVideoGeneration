@@ -1,0 +1,46 @@
+ToonYou:
+  base: "models/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  path: "models/DreamBooth_LoRA/cz-000041.safetensors"
+  lora_alpha: 1
+  motion_module:
+    # - "outputs/train_celebv_happy-2023-08-24T14-06-50/checkpoints/checkpoint-epoch-8.ckpt"
+    # - "outputs/train_celebv_happy-2023-08-24T14-06-50/checkpoints/checkpoint-epoch-15.ckpt"
+    # - "outputs/train_celebv_happy-2023-08-24T14-06-50/checkpoints/checkpoint-epoch-16.ckpt"
+    - "outputs/train_smile_face_512-2023-08-24T12-20-17/checkpoints/checkpoint-epoch-126.ckpt"
+
+
+  seed:           1921892841
+                  # 
+                  # [10788741199826055526, 6520604954829636163, 6519455744612555650, 16372571278361863751,
+                  # 0,1,2,42]
+  steps:          25
+  guidance_scale: 7.5
+
+  prompt:
+    - "a scs man is happy."
+    - "a scs man, upper body, gray suit, black tie, (ciematic light), gray background"
+    # - "1man is smiling, upper body, beautiful face, slight smile, straight hair, long hair, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, <lora:38:1>"
+    # - "a girl is smiling, upper body, beautiful face, slight smile, straight hair, long hair, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, <lora:38:1>"
+    
+
+  n_prompt:
+    - ""
+    - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+    # - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+    # - "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw"
+
+# MJ:
+# #### 灰色证件照
+# 模版图：
+# ![](http://s3-x.mcd.megvii-inc.com/mcd-codimd/uploads/upload_4af5b8449392a43e24e7b4cd76401918.jpg)
+# 生成信息：
+# Negative prompt: (worst quality, low quality, bad_pictures, negative_hand-neg:1.2), breast, nsfw
+# Steps: 27, Sampler: Euler a, CFG scale: 7, Seed: 1921892841, Size: 512x832, Model hash: fe54b5d04d, Model: civitai_leosamsMoonfile_filmGrain20, 
+# Denoising strength: 0.5, Clip skip: 2, Init image hash: 8af0b2374b228ca74529455f721b2c6f, Lora hashes: "38: 26d897afcb76", Version: v1.4.1-201-g14cf434b
+
+
+男性
+证件照
+(id photo:1.2),simple_background, blue_background, (bright:1.2), (1man:2), asian, upper body, well groomed, short hair, handsome face, clean face, clean white shirt, button up, (suit:1), light up, lora:add_detail:0.2
+Negative prompt: uneven eyes, lazy eye, easynegative,ng_deepnegative_v1_75t, badhandv4,(worst quality:2),(low quality:2),(normal quality:2),lowres,bad anatomy,bad hands,normal quality,((monochrome)),((grayscale)),((watermark)), (shadow:2), top light, moisture, sweat, (transparent:2), (perspective:2), (wrinkle:1.2), (clothes folds:1.5), coat, jacket, (beard:2), (mustache:2)
+Steps: 27, Sampler: DPM++ 2M Karras, CFG scale: 7, Seed: 3919031082, Size: 512x832, Model hash: e4a30e4607, Model: civitai_majicmixRealistic_v6, Clip skip: 2, ControlNet 0: “preprocessor: openpose_full, model: control_v11p_sd15_openpose [cab727d4], weight: 1, starting/ending: (0, 1), resize mode: Crop and Resize, pixel perfect: True, control mode: Balanced, preprocessor params: (512, -1, -1)”, Lora hashes: “add_detail: 7c6bad76eb54”, Version: v1.4.1-201-g14cf434b

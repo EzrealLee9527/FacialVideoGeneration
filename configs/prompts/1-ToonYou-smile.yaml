@@ -1,0 +1,31 @@
+ToonYou:
+  base: ""
+  path: "models/DreamBooth_LoRA/toonyou_beta3.safetensors"
+  motion_module:
+    - "outputs/train_smile_face-2023-08-24T06-57-51/checkpoints/checkpoint-epoch-100.ckpt"
+    # - "models/Motion_Module/mm_sd_v14.ckpt"
+    # - "models/Motion_Module/mm_sd_v15.ckpt"
+
+  seed:           [10788741199826055526, 6520604954829636163, 6519455744612555650, 16372571278361863751,
+                  0,0,0,0]
+  steps:          25
+  guidance_scale: 7.5
+
+  prompt:
+    - "best quality, masterpiece, 1girl, looking at viewer, blurry background, upper body, contemporary, dress, turns into smile"
+    - "masterpiece, best quality, 1girl, solo, cherry blossoms, hanami, pink flower, white flower, spring season, wisteria, petals, flower, plum blossoms, outdoors, falling petals, white hair, black eyes, dress, turns into smile"
+    - "best quality, masterpiece, 1boy, formal, abstract, looking at viewer, masculine, marble pattern, dress, turns into smile"
+    - "best quality, masterpiece, 1girl, cloudy sky, dandelion, contrapposto, alternate hairstyle, dress, turns into smile"
+    - "a person is smiling."
+    - "a girl is smiling."
+    - "a boy is smiling."
+    - "a dog is smiling."
+  n_prompt:
+    - ""
+    - "badhandv4,easynegative,ng_deepnegative_v1_75t,verybadimagenegative_v1.3, bad-artist, bad_prompt_version2-neg, teeth"
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""

@@ -1,0 +1,65 @@
+ToonYou:
+  base: "models/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  path: "models/DreamBooth_LoRA/cz-000041.safetensors"
+  lora_alpha: 1
+  motion_module:
+    # - "outputs/train_celebv_emotion-2023-08-24T08-13-42/checkpoints/checkpoint-epoch-5.ckpt"
+    # - "outputs/train_celebv_emotion-2023-08-24T11-11-10/checkpoints/checkpoint-epoch-4.ckpt"
+    # - "outputs/train_celebv_happy-2023-08-24T14-06-50/checkpoints/checkpoint-epoch-27.ckpt"
+    # - "outputs/train_celebv_remains_happy-2023-08-24T14-25-03/checkpoints/checkpoint-epoch-100.ckpt"
+    # - "outputs/train_celebv_remains_happy2-2023-08-27T06-09-08/checkpoints/checkpoint-epoch0-steps1000.ckpt"
+    # - "outputs/train_smile_face-2023-08-24T06-57-51/checkpoints/checkpoint-epoch-100.ckpt"
+    # - "outputs/train_smile_face_512-2023-08-24T12-20-17/checkpoints/checkpoint-epoch-126.ckpt"
+    # - "outputs/training_collect512-2023-08-25T08-48-43/checkpoints/checkpoint-epoch-200.ckpt"
+    # - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-200.ckpt"
+    # - "outputs//checkpoints/checkpoint-epoch-.ckpt"
+    # - "outputs//checkpoints/checkpoint-epoch-.ckpt"
+    # - "outputs//checkpoints/checkpoint-epoch-.ckpt"
+    # - "outputs//checkpoints/checkpoint-epoch-.ckpt"
+    # - "outputs//checkpoints/checkpoint-epoch-.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-10.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-20.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-30.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-40.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-50.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-60.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-70.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-80.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-90.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-100.ckpt"    
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-110.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-120.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-130.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-140.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-150.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-160.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-170.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-180.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-190.ckpt"
+    - "outputs/training_wink512-2023-08-25T09-00-51/checkpoints/checkpoint-epoch-200.ckpt"
+
+
+
+
+  seed:           1921892841
+                  # 
+                  # [10788741199826055526, 6520604954829636163, 6519455744612555650, 16372571278361863751,
+                  # 0,1,2,42]
+  steps:          27
+  guidance_scale: 7.5
+
+  prompt:
+    - "a scs man is winking."
+    - "a scs man is winking, upper body, gray suit, black tie, (ciematic light), gray background"
+
+  n_prompt:
+    - ""
+    - ""
+
+# MJ:
+# 男性
+# 证件照
+# (id photo:1.2),simple_background, blue_background, (bright:1.2), (1man:2), asian, upper body, well groomed, short hair, handsome face, clean face, clean white shirt, button up, (suit:1), light up, lora:add_detail:0.2
+# Negative prompt: uneven eyes, lazy eye, easynegative,ng_deepnegative_v1_75t, badhandv4,(worst quality:2),(low quality:2),(normal quality:2),lowres,bad anatomy,bad hands,normal quality,((monochrome)),((grayscale)),((watermark)), (shadow:2), top light, moisture, sweat, (transparent:2), (perspective:2), (wrinkle:1.2), (clothes folds:1.5), coat, jacket, (beard:2), (mustache:2)
+# Steps: 27, Sampler: DPM++ 2M Karras, CFG scale: 7, Seed: 3919031082, Size: 512x832, Model hash: e4a30e4607, Model: civitai_majicmixRealistic_v6, Clip skip: 2, ControlNet 0: “preprocessor: openpose_full, model: control_v11p_sd15_openpose [cab727d4], weight: 1, starting/ending: (0, 1), resize mode: Crop and Resize, pixel perfect: True, control mode: Balanced, preprocessor params: (512, -1, -1)”, 
+# Lora hashes: “add_detail: 7c6bad76eb54”, Version: v1.4.1-201-g14cf434b
