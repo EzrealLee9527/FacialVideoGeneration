@@ -1,0 +1,35 @@
+FilmVelvia:
+  base: "/models00/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  path: "/models00/DreamBooth_LoRA/mj_loras/38_0-000010.safetensors"
+  lora_alpha: 0.8
+  video_length: 16
+  landmark_video: "/work00/AnimateDiff-adapter-mmv2/templates/0927/44_The_person_is_happy_ldmks_frames16.mp4"
+  motion_module:
+    # - "/models00/Motion_Module/mm_sd_v15_v2.ckpt"
+
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-90.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-80.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-70.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-60.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-50.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-40.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-30.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-20.ckpt"
+    - "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_motion_based_ldmk_gaussian_sigma1_adapter_1600smileface_512_finetuneV2_16frames_tos-2023-10-08T01-52-48/checkpoints/checkpoint-epoch-10.ckpt"
+
+  adapter_module: "s3://ljj-sh/work/llz_work/FacialVideoGeneration/outputs/train_adapter_1600_face_512_tos_gaussian_sigma1-2023-10-07T17-03-16/checkpoints/checkpoint-epoch-1090.ckpt"
+
+  seed:           98376542
+  steps:          27
+  guidance_scale: 7.5
+
+  prompt:
+    # - "The person is happy, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, 1 woman, 1 woman, 1 woman, 1 woman, asian, asian, asianm female, female, female, pure gray background, business photo, business photo style, half body shot, beautiful face, front view, grey suit, business, business, {best quaility, masterpiece, ultra-realistic}"
+    # - "The person is sad, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, 1 woman, 1 woman, 1 woman, 1 woman, asian, asian, asianm female, female, female, pure gray background, business photo, business photo style, half body shot, beautiful face, front view, grey suit, business, business, {best quaility, masterpiece, ultra-realistic}"
+    - "The person is happy, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, asianm female,pure gray background, business photo style, half body shot, beautiful face, front view, grey suit, black hair, best quaility, masterpiece, ultra-realistic"
+    # - "The person is sad, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, asianm female, pure gray background, business photo style, half body shot, beautiful face, front view, grey suit, black hair, best quaility, masterpiece, ultra-realistic"
+  n_prompt:    
+    # -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"
+    # -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"
+    -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"
+    # -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"

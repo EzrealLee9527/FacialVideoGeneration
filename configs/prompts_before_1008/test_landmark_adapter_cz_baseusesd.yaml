@@ -1,0 +1,67 @@
+ToonYou:
+  # base: "/work00/AnimateDiff-main/models/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  base: "/huggingface00/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0/unet/diffusion_pytorch_model.safetensors"
+  # path: ""
+  path: "/work00/AnimateDiff-main/models/DreamBooth_LoRA/cz-000041.safetensors"
+  lora_alpha: 1.0
+  motion_module:
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-420.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-410.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-400.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-390.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-380.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-370.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-360.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-350.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-340.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-330.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-320.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-310.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-300.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-290.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-280.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-270.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-260.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-250.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-240.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-230.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-220.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-210.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-200.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-190.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-180.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-170.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-160.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-150.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-140.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-130.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-120.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-110.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-100.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-90.ckpt"
+    - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-80.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-70.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-60.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-50.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-40.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-30.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-20.ckpt"
+    # - "outputs/train_motion_based_adapter_smile_face_512-2023-08-31T13-30-42/checkpoints/checkpoint-epoch-10.ckpt"
+
+  adapter_module: "outputs/train_smile_face_512_adapter-2023-08-31T11-10-04/checkpoints/checkpoint-epoch-150.ckpt"
+  
+  seed:           42
+  # 1921892841
+  # [10788741199826055526, 6520604954829636163, 6519455744612555650, 16372571278361863751,
+                  
+  steps:          27
+  guidance_scale: 7.5
+
+  prompt:
+    - "a scs man is smiling, upper body, gray suit, black tie, (ciematic light), (bright tone:1.5), gray background, clean background"
+    - "a scs man is smiling, upper body, gray suit, black tie, (ciematic light), gray background"
+
+  n_prompt:
+    - "uneven eyes, lazy eye, easynegative,ng_deepnegative_v1_75t, badhandv4,(worst quality:2),(low quality:2),(normal quality:2),lowres,bad anatomy,bad hands,normal quality,((monochrome)),((grayscale)),((watermark)), (shadow:2), top light, moisture, sweat, (transparent:2), (perspective:2), (wrinkle:1.2), (clothes folds:1.5), coat, jacket, (beard:2), (mustache:2)"
+    - "uneven eyes, lazy eye, easynegative,ng_deepnegative_v1_75t, badhandv4,(worst quality:2),(low quality:2),(normal quality:2),lowres,bad anatomy,bad hands,normal quality,((monochrome)),((grayscale)),((watermark)), (shadow:2), top light, moisture, sweat, (transparent:2), (perspective:2), (wrinkle:1.2), (clothes folds:1.5), coat, jacket, (beard:2), (mustache:2)"
+

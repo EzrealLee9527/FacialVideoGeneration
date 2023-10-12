@@ -31,6 +31,8 @@ def get_down_block(
     unet_use_cross_frame_attention=None,
     unet_use_temporal_attention=None,
     
+    use_inflated_groupnorm=None,  # NOTE
+
     use_motion_module=None,
     
     motion_module_type=None,
@@ -49,6 +51,8 @@ def get_down_block(
             resnet_groups=resnet_groups,
             downsample_padding=downsample_padding,
             resnet_time_scale_shift=resnet_time_scale_shift,
+
+            use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
 
             use_motion_module=use_motion_module,
             motion_module_type=motion_module_type,
@@ -77,6 +81,7 @@ def get_down_block(
 
             unet_use_cross_frame_attention=unet_use_cross_frame_attention,
             unet_use_temporal_attention=unet_use_temporal_attention,
+            use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
             
             use_motion_module=use_motion_module,
             motion_module_type=motion_module_type,
@@ -106,6 +111,7 @@ def get_up_block(
 
     unet_use_cross_frame_attention=None,
     unet_use_temporal_attention=None,
+    use_inflated_groupnorm=None,   # NOTE
     
     use_motion_module=None,
     motion_module_type=None,
@@ -124,6 +130,8 @@ def get_up_block(
             resnet_act_fn=resnet_act_fn,
             resnet_groups=resnet_groups,
             resnet_time_scale_shift=resnet_time_scale_shift,
+
+            use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
 
             use_motion_module=use_motion_module,
             motion_module_type=motion_module_type,
@@ -152,6 +160,8 @@ def get_up_block(
 
             unet_use_cross_frame_attention=unet_use_cross_frame_attention,
             unet_use_temporal_attention=unet_use_temporal_attention,
+            use_inflated_groupnorm=use_inflated_groupnorm,    # NOTE
+
 
             use_motion_module=use_motion_module,
             motion_module_type=motion_module_type,
@@ -181,6 +191,7 @@ class UNetMidBlock3DCrossAttn(nn.Module):
 
         unet_use_cross_frame_attention=None,
         unet_use_temporal_attention=None,
+        use_inflated_groupnorm=None,  # NOTE
 
         use_motion_module=None,
         
@@ -206,6 +217,8 @@ class UNetMidBlock3DCrossAttn(nn.Module):
                 non_linearity=resnet_act_fn,
                 output_scale_factor=output_scale_factor,
                 pre_norm=resnet_pre_norm,
+
+                use_inflated_groupnorm=use_inflated_groupnorm,   # NOTE
             )
         ]
         attentions = []
@@ -248,6 +261,8 @@ class UNetMidBlock3DCrossAttn(nn.Module):
                     non_linearity=resnet_act_fn,
                     output_scale_factor=output_scale_factor,
                     pre_norm=resnet_pre_norm,
+
+                    use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
                 )
             )
 
@@ -259,7 +274,8 @@ class UNetMidBlock3DCrossAttn(nn.Module):
         hidden_states = self.resnets[0](hidden_states, temb)
         for attn, resnet, motion_module in zip(self.attentions, self.resnets[1:], self.motion_modules):
             hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
-            hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
+            if motion_module is not None:
+                hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
             hidden_states = resnet(hidden_states, temb)
 
         return hidden_states
@@ -290,6 +306,7 @@ class CrossAttnDownBlock3D(nn.Module):
 
         unet_use_cross_frame_attention=None,
         unet_use_temporal_attention=None,
+        use_inflated_groupnorm=None,   # NOTE
         
         use_motion_module=None,
 
@@ -321,6 +338,8 @@ class CrossAttnDownBlock3D(nn.Module):
                     non_linearity=resnet_act_fn,
                     output_scale_factor=output_scale_factor,
                     pre_norm=resnet_pre_norm,
+
+                    use_inflated_groupnorm=use_inflated_groupnorm,   # NOTE
                 )
             )
             if dual_cross_attention:
@@ -400,8 +419,8 @@ class CrossAttnDownBlock3D(nn.Module):
                     hidden_states = hidden_states + adapter_feature
 
                 # add motion module
-                hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
-
+                if motion_module is not None:
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
             output_states += (hidden_states,)
 
         if self.downsamplers is not None:
@@ -429,6 +448,8 @@ class DownBlock3D(nn.Module):
         output_scale_factor=1.0,
         add_downsample=True,
         downsample_padding=1,
+
+        use_inflated_groupnorm=None,  # NOTE
         
         use_motion_module=None,
         motion_module_type=None,
@@ -452,6 +473,8 @@ class DownBlock3D(nn.Module):
                     non_linearity=resnet_act_fn,
                     output_scale_factor=output_scale_factor,
                     pre_norm=resnet_pre_norm,
+
+                    use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
                 )
             )
             motion_modules.append(
@@ -501,8 +524,8 @@ class DownBlock3D(nn.Module):
                     hidden_states = hidden_states + adapter_feature
 
                 # add motion module
-                hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
-
+                if motion_module is not None:
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
             output_states += (hidden_states,)
 
         if self.downsamplers is not None:
@@ -539,6 +562,7 @@ class CrossAttnUpBlock3D(nn.Module):
 
         unet_use_cross_frame_attention=None,
         unet_use_temporal_attention=None,
+        use_inflated_groupnorm=None,  # NOTE
         
         use_motion_module=None,
 
@@ -569,6 +593,8 @@ class CrossAttnUpBlock3D(nn.Module):
                     non_linearity=resnet_act_fn,
                     output_scale_factor=output_scale_factor,
                     pre_norm=resnet_pre_norm,
+
+                    use_inflated_groupnorm=use_inflated_groupnorm,  # NOTE
                 )
             )
             if dual_cross_attention:
@@ -648,8 +674,8 @@ class CrossAttnUpBlock3D(nn.Module):
                 hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
                 
                 # add motion module
-                hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
-
+                if motion_module is not None:
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:
                 hidden_states = upsampler(hidden_states, upsample_size)
@@ -673,6 +699,8 @@ class UpBlock3D(nn.Module):
         resnet_pre_norm: bool = True,
         output_scale_factor=1.0,
         add_upsample=True,
+
+        use_inflated_groupnorm=None,  # NOTE
 
         use_motion_module=None,
         motion_module_type=None,
@@ -698,6 +726,8 @@ class UpBlock3D(nn.Module):
                     non_linearity=resnet_act_fn,
                     output_scale_factor=output_scale_factor,
                     pre_norm=resnet_pre_norm,
+
+                    use_inflated_groupnorm=use_inflated_groupnorm,   # NOTE
                 )
             )
             motion_modules.append(
@@ -737,8 +767,8 @@ class UpBlock3D(nn.Module):
                     hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(motion_module), hidden_states.requires_grad_(), temb, encoder_hidden_states)
             else:
                 hidden_states = resnet(hidden_states, temb)
-                hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
-
+                if motion_module is not None:
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states) if motion_module is not None else hidden_states
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:
                 hidden_states = upsampler(hidden_states, upsample_size)

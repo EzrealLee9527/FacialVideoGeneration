@@ -278,8 +278,8 @@ class VersatileAttention(CrossAttention):
             
             if self.pos_encoder is not None:
                 hidden_states = self.pos_encoder(hidden_states)
-            
-            encoder_hidden_states = repeat(encoder_hidden_states, "b n c -> (b d) n c", d=d) if encoder_hidden_states is not None else encoder_hidden_states
+            if encoder_hidden_states is not None and encoder_hidden_states.shape[0] == batch_size:
+                encoder_hidden_states = repeat(encoder_hidden_states, "b n c -> (b d) n c", d=d) if encoder_hidden_states is not None else encoder_hidden_states
         else:
             raise NotImplementedError
 

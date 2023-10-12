@@ -1,11 +1,36 @@
 import torch
 import torch.nn as nn
 from collections import OrderedDict
-from lvdm.models.modules.util import (
-    zero_module,
-    conv_nd,
-    avg_pool_nd
-)
+# from lvdm.models.modules.util import (
+#     zero_module,
+#     conv_nd,
+#     avg_pool_nd
+# )
+
+def conv_nd(dims, *args, **kwargs):
+    """
+    Create a 1D, 2D, or 3D convolution module.
+    """
+    if dims == 1:
+        return nn.Conv1d(*args, **kwargs)
+    elif dims == 2:
+        return nn.Conv2d(*args, **kwargs)
+    elif dims == 3:
+        return nn.Conv3d(*args, **kwargs)
+    raise ValueError(f"unsupported dimensions: {dims}")
+
+
+def avg_pool_nd(dims, *args, **kwargs):
+    """
+    Create a 1D, 2D, or 3D average pooling module.
+    """
+    if dims == 1:
+        return nn.AvgPool1d(*args, **kwargs)
+    elif dims == 2:
+        return nn.AvgPool2d(*args, **kwargs)
+    elif dims == 3:
+        return nn.AvgPool3d(*args, **kwargs)
+    raise ValueError(f"unsupported dimensions: {dims}")
 
 class Downsample(nn.Module):
     """

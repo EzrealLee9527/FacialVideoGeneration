@@ -778,10 +778,7 @@ class CrossAttnDownBlock2D(nn.Module):
                 hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
 
                 # add adapter module
-                # print('crossattndownblock2d hidden_states',hidden_states.shape)
                 if adapter_feature is not None:
-                    
-                    # print('crossattndownblock2d adapter_feature',adapter_feature.shape)
                     hidden_states = hidden_states + adapter_feature
 
             output_states += (hidden_states,)

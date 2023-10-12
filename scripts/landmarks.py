@@ -29,7 +29,6 @@ def get_landmarks2(video_path, video_length=8, resolution=(512,512)):
         crop_x2 = int(x_max + w_delta)
 
         cropped_frame = frame[crop_y1:crop_y2, crop_x1:crop_x2, :]
-        print(cropped_frame.shape, (new_height, new_width))
         resized_frame = cv2.resize(cropped_frame, (new_height, new_width))
         
         frame_ldmks = np.zeros((new_height, new_width,1))
@@ -79,7 +78,6 @@ def get_landmarks(video_path, video_length=8, resolution=(512,512)):
             crop_y1 = 0
             crop_x2 = width
             crop_y2 = height
-        print(cropped_frame.shape, (new_height, new_width))
         resized_frame = cv2.resize(cropped_frame, (new_height, new_width))
         
         frame_ldmks = np.zeros((new_height, new_width,1))
@@ -95,11 +93,11 @@ def get_landmarks(video_path, video_length=8, resolution=(512,512)):
         frames.append(resized_frame)
     return frames_ldmks, frames
 
-video_path = '/dataset00/Videos/smile/gifs/smile_23.gif'
-video_path = '/work00/AnimateDiff-adapter/zy_datas/zy_wink_new.gif'
-video_path = '/dataset00/Videos/smile/gifs/smile_375.gif'
-frames_ldmks, frames = get_landmarks(video_path)
-imageio.mimsave('smile_375_show.gif', frames, fps=5)
+# video_path = '/dataset00/Videos/smile/gifs/smile_23.gif'
+# video_path = '/work00/AnimateDiff-adapter/zy_datas/zy_wink_new.gif'
+# video_path = '/dataset00/Videos/smile/gifs/smile_375.gif'
+# frames_ldmks, frames = get_landmarks(video_path)
+# imageio.mimsave('smile_375_show.gif', frames, fps=5)
 # for i in range(len(frames_ldmks)):
 #     print(frames[i].max(), frames[i].min())
 #     cv2.imwrite(f"{i}_img.png", (frames[i]*(1-frames_ldmks[i])).astype('uint8')[:,:,:3])

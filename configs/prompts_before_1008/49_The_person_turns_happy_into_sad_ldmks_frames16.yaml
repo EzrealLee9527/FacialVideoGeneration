@@ -1,0 +1,76 @@
+FilmVelvia:
+  base: "/models00/DreamBooth_LoRA/leosamsMoonfile_filmGrain20.safetensors"
+  path: "/models00/DreamBooth_LoRA/mj_loras/38_0-000010.safetensors"
+  lora_alpha: 0.5
+  video_length: 16
+  landmark_video: "/work00/AnimateDiff-adapter-mmv2/templates/0927/49_The_person_turns_happy_into_sad_ldmks_frames16.mp4"
+  motion_module:
+    # - "outputs/train_smile_face_512-2023-08-24T12-20-17_epoch126.ckpt"
+    # - "/models00/Motion_Module/mm_sd_v15_v2.ckpt"
+
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-1.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-2.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-3.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-4.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-5.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-6.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-7.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-8.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-10.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-12.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-14.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-16.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-18.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-20.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-22.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-24.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-26.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-28.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-30.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-32.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-34.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-36.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-38.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-40.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-42.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-44.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-46.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-48.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-50.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-52.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-54.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-56.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-58.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-60.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-62.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-64.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-66.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-68.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-70.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-72.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-74.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-76.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-78.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-80.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-82.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-84.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-86.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-88.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-90.ckpt"
+    - "outputs/train_motion_based_adapter_1600_face_512_finetuneV2_16frames-2023-09-26T02-07-12/checkpoints/checkpoint-epoch-100.ckpt"
+
+  adapter_module: "/work00/AnimateDiff-adapter-mmv2/outputs/train_adapter_new_dataset_512_16_stride1_ldmk-2023-09-25T13-59-00/checkpoints/checkpoint-epoch-2800.ckpt"
+  # adapter_module: outputs/train_adapter_emotionalgif_smile_512_8_stride1_ldmk_faceparsing_crop_ddp-2023-09-07T11-06-56/checkpoints/checkpoint-epoch-500.ckpt
+
+
+  seed:           98376542
+  steps:          27
+  guidance_scale: 7.5
+
+  prompt:
+    - "The person is happy, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, 1 woman, 1 woman, 1 woman, 1 woman, asian, asian, asianm female, female, female, pure gray background, business photo, business photo style, half body shot, beautiful face, front view, grey suit, business, business, {best quaility, masterpiece, ultra-realistic}"
+    - "The person is sad, High detailed, High precision, Hyper quality, Fine luster, UHD,16k, masterpiece, 1 woman, 1 woman, 1 woman, 1 woman, asian, asian, asianm female, female, female, pure gray background, business photo, business photo style, half body shot, beautiful face, front view, grey suit, business, business, {best quaility, masterpiece, ultra-realistic}"
+  n_prompt:    
+    -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"
+    -  "(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on the background:1.3), rendered, 3d"
+

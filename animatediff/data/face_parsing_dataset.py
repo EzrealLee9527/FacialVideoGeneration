@@ -394,10 +394,10 @@ if __name__ == "__main__":
     # 创建 datasets
     dataset = EmotionsGif_controlnet(
         meta_path=None,
-        data_dir="/data00/Datasets/Videos/collected_emotions_gif_codeformer",
+        data_dir="/dataset00/Videos/collected_emotions_gif_codeformer",
         emotions_type="girl_smile",
         is_image=False,
-        face_parsing_path="/data00/Datasets/Videos/collected_emotions_gif_face_parsing/")
+        face_parsing_path="/dataset00/Videos/collected_emotions_gif_face_parsing/")
     print('train_dataset size is:', len(dataset))  # 1044
 
     # a = dataset[0]

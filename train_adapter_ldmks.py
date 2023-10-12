@@ -38,7 +38,10 @@ from animatediff.pipelines.pipeline_animation import AnimationPipeline
 from animatediff.utils.util import save_videos_grid, zero_rank_print
 import importlib
 import numpy as np
+import io
 from scripts.landmarks import get_landmarks
+from megfile import smart_open, smart_exists, smart_sync, smart_remove, smart_glob
+import cv2
 
 def init_dist(launcher="slurm", backend='nccl', port=29501, **kwargs):
     """Initializes distributed environment."""
@@ -77,12 +80,14 @@ def init_dist(launcher="slurm", backend='nccl', port=29501, **kwargs):
 
 def main(
     image_finetune: bool,
+    adapter_model: Dict,
     
     name: str,
     use_wandb: bool,
     launcher: str,
     
     output_dir: str,
+    s3_output_dir: str,
     pretrained_model_path: str,
     unet3d_pretrained_model_path: str,
 
@@ -143,6 +148,7 @@ def main(
     # Logging folder
     folder_name = "debug" if is_debug else name + datetime.datetime.now().strftime("-%Y-%m-%dT%H-%M-%S")
     output_dir = os.path.join(output_dir, folder_name)
+    s3_output_dir = os.path.join(s3_output_dir, folder_name)
     if is_debug and os.path.exists(output_dir):
         os.system(f"rm -rf {output_dir}")
 
@@ -184,7 +190,9 @@ def main(
     # Load pretrained unet weights
     if unet_checkpoint_path != "":
         zero_rank_print(f"from checkpoint: {unet_checkpoint_path}")
-        unet_checkpoint_path = torch.load(unet_checkpoint_path, map_location="cpu")
+        with smart_open(unet_checkpoint_path, 'rb') as f:
+            buffer = io.BytesIO(f.read())
+            unet_checkpoint_path = torch.load(buffer, map_location="cpu")
         if "global_step" in unet_checkpoint_path: zero_rank_print(f"global_step: {unet_checkpoint_path['global_step']}")
         state_dict = unet_checkpoint_path["state_dict"] if "state_dict" in unet_checkpoint_path else unet_checkpoint_path
 
@@ -208,7 +216,7 @@ def main(
 
     # landmarks encoder
     from animatediff.models.adapter_module import Adapter
-    model_adapter = Adapter(cin=64, channels=[320, 640, 1280, 1280][:4], 
+    model_adapter = Adapter(cin=adapter_model.get('cin', 64), channels=[320, 640, 1280, 1280][:4], 
                             nums_rb=2, ksize=1, sk=True, use_conv=False,
                             ckpt_path=pretrained_adapter).to(local_rank)
     model_adapter = DDP(model_adapter, device_ids=[local_rank], output_device=local_rank)
@@ -245,9 +253,10 @@ def main(
     # train_dataset = WebVid10M(**train_data, is_image=image_finetune)
     # train_dataset = WebVid(**train_data, is_image=image_finetune)
     
-    dataset_cls = getattr(importlib.import_module('animatediff.data.adapter_datasets_online', package=None), data_class)
+    dataset_cls = getattr(importlib.import_module('animatediff.data.datasets', package=None), data_class)
     train_dataset = dataset_cls(**train_data, is_image=image_finetune)
     print('train_dataset size is:', len(train_dataset))
+    video_length = train_data['video_length']
 
     distributed_sampler = DistributedSampler(
         train_dataset,
@@ -267,6 +276,8 @@ def main(
         pin_memory=True,
         drop_last=True,
     )
+
+    # import pdb;pdb.set_trace()
 
     # Get the training iteration
     if max_train_steps == -1:
@@ -336,27 +347,29 @@ def main(
         train_dataloader.sampler.set_epoch(epoch)
         
         for step, batch in enumerate(train_dataloader):
-            if cfg_random_null_text:
-                batch['text'] = [name if random.random() > cfg_random_null_text_ratio else "" for name in batch['text']]
-                
+            transposed_list = list(zip(*batch['texts']))
+            texts = [list(item) for item in transposed_list]
+            
             # Data batch sanity check
             if epoch == first_epoch and step == 0:
-                pixel_values, texts = batch['pixel_values'].cpu(), batch['text']
+                pixel_values = batch['pixel_values'].cpu()
                 if not image_finetune:
                     pixel_values = rearrange(pixel_values, "b f c h w -> b c f h w")
                     for idx, (pixel_value, text) in enumerate(zip(pixel_values, texts)):
                         pixel_value = pixel_value[None, ...]
-                        save_videos_grid(pixel_value, f"{output_dir}/sanity_check/{'-'.join(text.replace('/', '').split()[:10]) if not text == '' else f'{global_rank}-{idx}'}.gif", rescale=True)
+                        save_videos_grid(pixel_value, f"{output_dir}/sanity_check/{'-'.join(text[0].replace('/', '').split()[:10]) if not text == '' else f'{global_rank}-{idx}'}.gif", rescale=True)
                 else:
                     for idx, (pixel_value, text) in enumerate(zip(pixel_values, texts)):
                         pixel_value = pixel_value / 2. + 0.5
-                        torchvision.utils.save_image(pixel_value, f"{output_dir}/sanity_check/{'-'.join(text.replace('/', '').split()[:10]) if not text == '' else f'{global_rank}-{idx}'}.png")
-                    
+                        torchvision.utils.save_image(pixel_value, f"{output_dir}/sanity_check/{'-'.join(text[0].replace('/', '').split()[:10]) if not text == '' else f'{global_rank}-{idx}'}.png")
+
+            if cfg_random_null_text:
+                texts = [name if random.random() > cfg_random_null_text_ratio else [''] * video_length for name in texts]
+   
             ### >>>> Training >>>> ###
             
             # Convert videos to latent space            
             pixel_values = batch["pixel_values"].to(local_rank)
-            video_length = pixel_values.shape[1]
             with torch.no_grad():
                 if not image_finetune:
                     pixel_values = rearrange(pixel_values, "b f c h w -> (b f) c h w")
@@ -382,12 +395,17 @@ def main(
             noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
             
             # Get the text embedding for conditioning
+            texts = [item for sublist in texts for item in sublist] 
+            # print('debug:', len(texts), batch['landmarks'].shape, batch['pixel_values'].shape)
+            if len(texts) == 0:
+                texts = [''] * (train_batch_size * video_length)
+            # print(texts)
             with torch.no_grad():
                 prompt_ids = tokenizer(
-                    batch['text'], max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
+                    texts, max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
                 ).input_ids.to(latents.device)
                 encoder_hidden_states = text_encoder(prompt_ids)[0]
-                
+
             # Get the target for loss depending on the prediction type
             if noise_scheduler.config.prediction_type == "epsilon":
                 target = noise
@@ -399,7 +417,14 @@ def main(
             
             # adapter
             unet.zero_grad()
-            adapter_features = model_adapter(batch['landmarks'].to(local_rank))
+            adapter_input = batch['landmarks']
+            # if image_finetune:
+            #     mask_landmarks = np.random.randint(0,2)
+            #     mask_face_parsings = np.random.randint(0,2)
+            #     adapter_input = torch.concat((batch['landmarks']*mask_landmarks,batch['face_parsings']*mask_face_parsings), dim=1)
+            # else:
+            #     adapter_input = torch.concat((batch['landmarks']*mask_landmarks,batch['face_parsings']*mask_face_parsings), dim=2)
+            adapter_features = model_adapter(adapter_input.to(local_rank))
                 
             # Predict the noise residual and compute loss
             # Mixed-precision training
@@ -437,17 +462,24 @@ def main(
                 
             # Save checkpoint
             if is_main_process and global_step % checkpointing_steps == 0:
-                save_path = os.path.join(output_dir, f"checkpoints")
+                s3_save_dir = os.path.join(s3_output_dir, f"checkpoints")
+                local_save_dir = os.path.join(output_dir, f"checkpoints")
                 state_dict = {
                     "epoch": epoch,
                     "global_step": global_step,
                     "state_dict": model_adapter.state_dict(),
                 }
                 if step == len(train_dataloader) - 1:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint-epoch-{epoch+1}.ckpt"))
+                    local_save_path = os.path.join(local_save_dir, f"checkpoint-epoch-{epoch+1}.ckpt")
+                    s3_save_path = os.path.join(s3_save_dir, f"checkpoint-epoch-{epoch+1}.ckpt")   
                 else:
-                    torch.save(state_dict, os.path.join(save_path, f"checkpoint-steps/steps{global_step}.ckpt"))
-                logging.info(f"Saved state to {save_path} (global_step: {global_step})")
+                    local_save_path = os.path.join(local_save_dir, f"checkpoint-epoch0-steps{global_step}.ckpt")
+                    s3_save_path = os.path.join(s3_save_dir, f"checkpoint-epoch0-steps{global_step}.ckpt")
+                torch.save(state_dict, local_save_path)
+                # smart_sync(local_save_path, s3_save_path)
+                os.system(f'aws --endpoint-url=https://tos-s3-cn-shanghai.ivolces.com s3 cp {local_save_path} {s3_save_path}')
+                smart_remove(local_save_path)
+                logging.info(f"Saved state to {s3_save_path} (global_step: {global_step})")
                 
             # Periodically validation
             if is_main_process and (global_step % validation_steps == 0 or global_step in validation_steps_tuple):
@@ -463,13 +495,37 @@ def main(
                 # ada_rand_idx = np.random.randint(0,len(adapter_features)-1)
 
                 
-                video_path = '/dataset00/Videos/smile/gifs/smile_23.gif'
-                frames_ldmks, frames = get_landmarks(video_path, video_length=8)
-                frame_ldmks = torch.tensor(np.array(frames_ldmks[-1])).permute(
-                    2, 0, 1).float().to("cuda").unsqueeze(0)
+                
+                # video_path = '/dataset00/Videos/smile/gifs/smile_23.gif'
+                # frames_ldmks, frames = get_landmarks(video_path, video_length=8)
+                # frame_ldmks = torch.tensor(np.array(frames_ldmks[-1])).permute(
+                #     2, 0, 1).float().to("cuda").unsqueeze(0)
+                # # f,c,h,w
+                # test_adapter_features = model_adapter(frame_ldmks)
+                # print('test_adapter_features', test_adapter_features.shape)
+                # print('adapter_features[:1]', adapter_features[:1].shape)
+
+
+                #####################################
+                ldmks_video = '/work00/AnimateDiff-adapter-mmv2/templates/0927/107_The_person_turns_sad_into_sad_ldmks_frames16.mp4'
+                cap = cv2.VideoCapture(ldmks_video)
+                frames_ldmks = []  
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if ret:
+                        frames_ldmks.append(frame)
+                    else:
+                        break
+                frames_ldmks = np.array(frames_ldmks) / 255
+                save_frames_ldmks = torch.tensor(frames_ldmks).permute(3,0,1,2).unsqueeze(0).float()
+                frames_ldmks = torch.tensor(frames_ldmks).permute(0,3,1,2).float().to("cuda")[:1,:1,:,:]
                 # f,c,h,w
-                test_adapter_features = model_adapter(frame_ldmks)
-                test_adapter_features = [x.repeat(2,1,1,1) for x in test_adapter_features]
+                adapter_features = model_adapter(frames_ldmks)
+                test_adapter_features = [x.repeat(2,1,1,1) for x in adapter_features]
+                print('adapter_features', len(adapter_features), adapter_features[0].shape)
+
+                
+                # test_adapter_features = [x.repeat(2,1,1,1)  for x in adapter_features]
 
                 # one_adapter_features = [x[ada_rand_idx:ada_rand_idx+1].repeat(2,1,1,1) for x in adapter_features]
                 for idx, prompt in enumerate(prompts):
@@ -486,8 +542,7 @@ def main(
                         save_videos_grid(sample, f"{output_dir}/samples/sample-{global_step}/{idx}.gif")
                         samples.append(sample)
                         
-                    else:
-                        
+                    else:     
                         sample = validation_pipeline(
                             prompt,
                             generator           = generator,
@@ -495,7 +550,7 @@ def main(
                             width               = width,
                             num_inference_steps = validation_data.get("num_inference_steps", 25),
                             guidance_scale      = validation_data.get("guidance_scale", 8.),
-                            adapter_features=test_adapter_features,
+                            adapter_features    = test_adapter_features,
                         ).images[0]
                         sample = torchvision.transforms.functional.to_tensor(sample)
                         samples.append(sample)

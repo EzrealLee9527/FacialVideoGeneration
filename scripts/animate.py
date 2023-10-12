@@ -167,7 +167,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pretrained_model_path", type=str, default="runwayml/stable-diffusion-v1-5",)
-    parser.add_argument("--unet3d_pretrained_model_path", type=str, default='/huggingface00/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0',)
+    parser.add_argument("--unet3d_pretrained_model_path", type=str, default='huggingface00/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0',)
     parser.add_argument("--inference_config",      type=str, default="configs/inference/inference.yaml")    
     parser.add_argument("--config",                type=str, required=True)
     

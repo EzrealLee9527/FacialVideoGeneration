@@ -182,6 +182,7 @@ def main(
         unet = UNet2DConditionModel.from_pretrained(pretrained_model_path, subfolder="unet")
         
     # Load pretrained unet weights
+    print('unet_checkpoint_path:', unet_checkpoint_path)
     if unet_checkpoint_path != "":
         zero_rank_print(f"from checkpoint: {unet_checkpoint_path}")
         unet_checkpoint_path = torch.load(unet_checkpoint_path, map_location="cpu")
@@ -190,6 +191,9 @@ def main(
 
         m, u = unet.load_state_dict(state_dict, strict=False)
         zero_rank_print(f"missing keys: {len(m)}, unexpected keys: {len(u)}")
+
+        print(f'unet_checkpoint: unet:{len(unet.state_dict())}, state_dict {len(state_dict.keys())}, missing {len(m)}, unexpected {len(u)}')
+
         assert len(u) == 0
         
     # Freeze vae and text_encoder
@@ -236,7 +240,7 @@ def main(
     # train_dataset = WebVid10M(**train_data, is_image=image_finetune)
     # train_dataset = WebVid(**train_data, is_image=image_finetune)
     
-    dataset_cls = getattr(importlib.import_module('animatediff.data.datasets', package=None), data_class)
+    dataset_cls = getattr(importlib.import_module('animatediff.data.adapter_datasets_online_crop', package=None), data_class)
     train_dataset = dataset_cls(**train_data, is_image=image_finetune)
     print('train_dataset size is:', len(train_dataset))
 
@@ -306,7 +310,7 @@ def main(
         adapter_module_state_dict = adapter_module_state_dict["state_dict"]
         adapter_module_state_dict = {x.replace('module.',''):y for x,y in adapter_module_state_dict.items()}
     from animatediff.models.adapter_module import Adapter
-    model_adapter = Adapter(cin=64, channels=[320, 640, 1280, 1280][:4], nums_rb=2, ksize=1, sk=True, use_conv=False).to("cuda")
+    model_adapter = Adapter(cin=128, channels=[320, 640, 1280, 1280][:4], nums_rb=2, ksize=1, sk=True, use_conv=False).to("cuda")
     missing, unexpected = model_adapter.load_state_dict(adapter_module_state_dict)
     print(f'model_adapter missing {len(missing)}, unexpected {len(unexpected)}')
     model_adapter.requires_grad_(False)
@@ -386,9 +390,12 @@ def main(
             # Get the text embedding for conditioning
             with torch.no_grad():
                 prompt_ids = tokenizer(
-                    batch['text'], max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
+                    batch['texts'], max_length=tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt"
                 ).input_ids.to(latents.device)
                 encoder_hidden_states = text_encoder(prompt_ids)[0]
+                print('encoder_hidden_states')
+                print(encoder_hidden_states[0].shape)
+                print(encoder_hidden_states.shape)
                 
             # Get the target for loss depending on the prediction type
             if noise_scheduler.config.prediction_type == "epsilon":
@@ -400,11 +407,13 @@ def main(
 
             # get landmarks b,f,c,h,w
             ldmks = rearrange(batch['landmarks'], "b f c h w -> (b f) c h w")
-            adapter_features = model_adapter(ldmks.to(local_rank))
+            # adapter_features = model_adapter(ldmks.to(local_rank))
+            adapter_features = model_adapter(torch.concat((ldmks.to(local_rank), torch.zeros_like(ldmks).to(local_rank)),dim=1))
+
             adapter_features = [rearrange(x, "(b f) c h w -> b c f h w", f=video_length) for x in adapter_features]
             # f,c,h,w transfer adapter_features to video format (b c f h w)
             # adapter_features = [x.repeat(2,1,1,1,1) for x in adapter_features]
-            print('adapter_features', len(adapter_features), adapter_features[0].shape)
+            # print('adapter_features', len(adapter_features), adapter_features[0].shape)
             
             # Predict the noise residual and compute loss
             # Mixed-precision training
@@ -457,16 +466,17 @@ def main(
             # Periodically validation
             from scripts.landmarks import get_landmarks
             import numpy as np
-            video_path = '/dataset00/Videos/smile/gifs/smile_23.gif'
-            frames_ldmks, frames = get_landmarks(video_path)
+            video_path = '/dataset00/Videos/smile/gifs/smile_375.gif'
+            frames_ldmks, frames = get_landmarks(video_path, video_length=video_length)
             frames_ldmks = torch.tensor(np.array(frames_ldmks)).permute(0,3,1,2).float().to("cuda")
-
             # eval using image format
             # f,c,h,w
-            adapter_features = model_adapter(frames_ldmks)
+            # adapter_features = model_adapter(frames_ldmks)
+            adapter_features = model_adapter(torch.concat((frames_ldmks, torch.zeros_like(frames_ldmks)),dim=1))
+
             # transfer adapter_features to video format (b c f h w)
             adapter_features = [x.permute(1,0,2,3).unsqueeze(0).repeat(2,1,1,1,1) for x in adapter_features]
-            print('adapter_features', len(adapter_features), adapter_features[0].shape)
+            # print('adapter_features', len(adapter_features), adapter_features[0].shape)
 
             if is_main_process and (global_step % validation_steps == 0 or global_step in validation_steps_tuple):
                 samples = []
@@ -490,7 +500,7 @@ def main(
                             adapter_features=adapter_features,
                             **validation_data,
                         ).videos
-                        print('sample', sample.shape)
+                        # print('sample', sample.shape)
                         save_videos_grid(sample, f"{output_dir}/samples/sample-{global_step}/{idx}.gif")
                         samples.append(sample)
                         

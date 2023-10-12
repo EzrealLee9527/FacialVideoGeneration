@@ -1,9 +1,11 @@
+from torch.utils.data import IterableDataset
+import io
+import boto3
 import os
 import random
 import bisect
-
 import pandas as pd
-
+import torch.nn.functional as F
 import omegaconf
 import torch
 from torch.utils.data import Dataset
@@ -13,34 +15,65 @@ import imageio
 import numpy as np
 import cv2
 import json
+import sys
+from PIL import Image, ImageDraw
+# from animatediff.data.data_utils import check_file_exists, load_csv, load_json, load_txt, get_video_reader
+# from data_utils import check_file_exists, load_csv, load_json, load_txt, get_video_reader
 
-import pdb
+from glob import glob
+import tarfile
+from megfile import smart_open as open
+import megfile
+import msgpack
+from megfile import smart_glob
+import pickle
+
+# 放到data_utils里
+def load_msgpack_list(file_path: str):
+    loaded_data = []
+    with open(file_path, 'rb') as f:
+        unpacker = msgpack.Unpacker(f,strict_map_key = False)
+        for unpacked_item in unpacker:
+            loaded_data.append(unpacked_item)
+        return loaded_data
 
 
-class WebVid(Dataset):
-    """
-    WebVid Dataset.
-    Assumes webvid data is structured as follows.
-    Webvid/
-        videos/
-            000001_000050/      ($page_dir)
-                1.mp4           (videoid.mp4)
-                ...
-                5000.mp4
-            ...
-    """
+# @lru_cache(maxsize=128)
+def load_tar(p):
+    return tarfile.open(fileobj=open(p, 'rb'))
 
+
+def load_img_from_tar(img_path):
+    tar_fname,img_fname = img_path.rsplit("/",1)
+    tar_obj = load_tar(tar_fname)
+    img = Image.open(tar_obj.extractfile(img_fname)).convert("RGB")
+    return np.array(img)
+
+def read_remote_img(p):
+    with open(p, 'rb') as rf:
+        return Image.open(rf).convert("RGB")
+
+def gen_landmark_control_input(img_tensor, landmarks):
+    cols = torch.tensor([int(y) for x,y in landmarks])
+    rows = torch.tensor([int(x) for x,y in landmarks])
+    img_tensor = img_tensor.index_put_(indices=(cols, rows), values=torch.ones(106))
+    return img_tensor.unsqueeze(-1)
+
+class S3VideosDataset(Dataset):   
     def __init__(self,
-                 meta_path,
                  data_dir,
+                 data_prefix,
+                 local_data_prefix,
+                 use_faceparsing=False,
+                 ldmk_use_gaussian=False,
                  subsample=None,
                  video_length=16,
-                 resolution=[256, 256],
+                 resolution=[512, 512],
                  frame_stride=1,
                  spatial_transform=None,
                  crop_resolution=None,
                  fps_max=None,
-                 load_raw_resolution=False,
+                 load_raw_resolution=True,
                  fps_schedule=None,
                  fs_probs=None,
                  bs_per_gpu=None,
@@ -48,8 +81,10 @@ class WebVid(Dataset):
                  dataname='',
                  is_image=False,
                  ):
-        self.meta_path = meta_path
+        self.data_prefix = data_prefix
+        # self.data_dir = os.path.join(self.data_prefix, data_dir)
         self.data_dir = data_dir
+        
         self.subsample = subsample
         self.video_length = video_length
         self.resolution = [resolution, resolution] if isinstance(
@@ -61,8 +96,12 @@ class WebVid(Dataset):
         self.trigger_word = trigger_word
         self.dataname = dataname
         self.is_image = is_image
-
-        self._load_metadata()
+        self.info = self._get_file_info()
+        self.start = self.info['start']
+        self.end = self.info['end']
+        self.ldmk_use_gaussian = ldmk_use_gaussian
+        self.use_faceparsing = use_faceparsing
+        self.local_data_prefix = local_data_prefix
         if spatial_transform is not None:
             if spatial_transform == "random_crop":
                 self.spatial_transform = transforms.RandomCrop(crop_resolution)
@@ -83,903 +122,290 @@ class WebVid(Dataset):
             assert (self.bs_per_gpu is not None)
             self.counter = 0
             self.stage_idx = 0
-
-    def _load_metadata(self):
-        metadata = pd.read_csv(self.meta_path)
-        if self.subsample is not None:
-            metadata = metadata.sample(self.subsample, random_state=0)
-        metadata['caption'] = metadata['name']
-        del metadata['name']
-        self.metadata = metadata
-        self.metadata.dropna(inplace=True)
-        # self.metadata['caption'] = self.metadata['caption'].str[:350]
-
-    def _get_video_path(self, sample):
-        if self.dataname == "loradata":
-            rel_video_fp = str(sample['videoid']) + '.mp4'
-            full_video_fp = os.path.join(self.data_dir, rel_video_fp)
-        else:
-            rel_video_fp = os.path.join(
-                sample['page_dir'], str(sample['videoid']) + '.mp4')
-            full_video_fp = os.path.join(self.data_dir, 'videos', rel_video_fp)
-        return full_video_fp, rel_video_fp
-
-    def get_fs_based_on_schedule(self, frame_strides, schedule):
-        # nstage=len_fps_schedule + 1
-        assert (len(frame_strides) == len(schedule) + 1)
-        global_step = self.counter // self.bs_per_gpu  # TODO: support resume.
-        stage_idx = bisect.bisect(schedule, global_step)
-        frame_stride = frame_strides[stage_idx]
-        # log stage change
-        if stage_idx != self.stage_idx:
-            print(
-                f'fps stage: {stage_idx} start ... new frame stride = {frame_stride}')
-            self.stage_idx = stage_idx
-        return frame_stride
-
-    def get_fs_based_on_probs(self, frame_strides, probs):
-        assert (len(frame_strides) == len(probs))
-        return random.choices(frame_strides, weights=probs)[0]
-
-    def get_fs_randomly(self, frame_strides):
-        return random.choice(frame_strides)
-
-    def __getitem__(self, index):
-
-        if isinstance(self.frame_stride, list) or isinstance(self.frame_stride, omegaconf.listconfig.ListConfig):
-            if self.fps_schedule is not None:
-                frame_stride = self.get_fs_based_on_schedule(
-                    self.frame_stride, self.fps_schedule)
-            elif self.fs_probs is not None:
-                frame_stride = self.get_fs_based_on_probs(
-                    self.frame_stride, self.fs_probs)
-            else:
-                frame_stride = self.get_fs_randomly(self.frame_stride)
-        else:
-            frame_stride = self.frame_stride
-        assert (isinstance(frame_stride, int)), type(frame_stride)
-
-        while True:
-            index = index % len(self.metadata)
-            sample = self.metadata.iloc[index]
-            video_path, rel_fp = self._get_video_path(sample)
-            caption = sample['caption']+self.trigger_word
-
-            # make reader
-            try:
-                if self.load_raw_resolution:
-                    video_reader = VideoReader(video_path, ctx=cpu(0))
-                else:
-                    video_reader = VideoReader(video_path, ctx=cpu(
-                        0), width=self.resolution[1], height=self.resolution[0])
-                if len(video_reader) < self.video_length:
-                    print(
-                        f"video length ({len(video_reader)}) is smaller than target length({self.video_length})")
-                    index += 1
-                    continue
-                else:
-                    pass
-            except:
-                index += 1
-                print(f"Load video failed! path = {video_path}")
-                continue
-
-            # sample strided frames
-            all_frames = list(range(0, len(video_reader), frame_stride))
-            if len(all_frames) < self.video_length:  # recal a max fs
-                frame_stride = len(video_reader) // self.video_length
-                assert (frame_stride != 0)
-                all_frames = list(range(0, len(video_reader), frame_stride))
-
-            # select a random clip
-            rand_idx = random.randint(0, len(all_frames) - self.video_length)
-            frame_indices = all_frames[rand_idx:rand_idx+self.video_length]
-            try:
-                frames = video_reader.get_batch(frame_indices)
-                break
-            except:
-                print(f"Get frames failed! path = {video_path}")
-                index += 1
-                continue
-
-        assert (
-            frames.shape[0] == self.video_length), f'{len(frames)}, self.video_length={self.video_length}'
-        frames = torch.tensor(frames.asnumpy()).permute(
-            0, 3, 1, 2).float()  # [t,h,w,c] -> [t,c,h,w]
-        if self.spatial_transform is not None:
-            frames = self.spatial_transform(frames)
-        if self.resolution is not None:
-            assert (frames.shape[2] == self.resolution[0] and frames.shape[3] ==
-                    self.resolution[1]), f'frames={frames.shape}, self.resolution={self.resolution}'
-        frames = (frames / 255 - 0.5) * 2
-        # frames = frames / 255
-
-        # fps_ori = video_reader.get_avg_fps()
-        # fps_clip = fps_ori // frame_stride
-        # if self.fps_max is not None and fps_clip > self.fps_max:
-        #     fps_clip = self.fps_max
-
-        # data = {'video': frames, 'caption': caption, 'path': video_path,
-        #         'fps': fps_clip, 'frame_stride': frame_stride}
-
-        if self.fps_schedule is not None:
-            self.counter += 1
-        
-        
-        if self.is_image:
-            frames = frames[0]
-        sample = dict(pixel_values=frames, text=caption)
-        return sample
     
-    def __len__(self):
-        return len(self.metadata)
+    def _get_file_info(self):
+        self.meta_info_list = smart_glob(
+            os.path.join(
+                self.data_dir, '*.msgpack'
+            )
+        )
+        print(f'Detect {len(self.meta_info_list)} meta files')
+        info = {
+            "start": 0,
+            "end": len(self.meta_info_list),
+        }
+        return info
     
-
-class SmileGif(Dataset):
-    """
-    SmileGif Dataset.
-    Assumes SmileGif data is structured as follows.
-    SmileGif/
-        gifs/
-            1.gif
-            2.gif
-            ...
-    """
-
-    def __init__(self,
-                 meta_path,
-                 data_dir,
-                 subsample=None,
-                 video_length=8,
-                 resolution=[256, 256],
-                 frame_stride=1,
-                 spatial_transform=None,
-                 crop_resolution=None,
-                 fps_max=None,
-                 load_raw_resolution=False,
-                 fps_schedule=None,
-                 fs_probs=None,
-                 bs_per_gpu=None,
-                 trigger_word='',
-                 dataname='',
-                 is_image=False,
-                 ):
-        self.meta_path = meta_path
-        self.data_dir = data_dir
-        self.subsample = subsample
-        self.video_length = video_length
-        self.resolution = [resolution, resolution] if isinstance(
-            resolution, int) else resolution
-        self.frame_stride = frame_stride
-        self.fps_max = fps_max
-        self.load_raw_resolution = load_raw_resolution
-        self.fs_probs = fs_probs
-        self.trigger_word = trigger_word
-        self.dataname = dataname
-        self.is_image = is_image
-
-        self._load_metadata()
-        if spatial_transform is not None:
-            if spatial_transform == "random_crop":
-                self.spatial_transform = transforms.RandomCrop(crop_resolution)
-            elif spatial_transform == "resize_center_crop":
-                assert (self.resolution[0] == self.resolution[1])
-                self.spatial_transform = transforms.Compose([
-                    transforms.Resize(resolution),
-                    transforms.CenterCropVideo(resolution),
-                ])
-            else:
-                raise NotImplementedError
-        else:
-            self.spatial_transform = None
-
-        self.fps_schedule = fps_schedule
-        self.bs_per_gpu = bs_per_gpu
-        if self.fps_schedule is not None:
-            assert (self.bs_per_gpu is not None)
-            self.counter = 0
-            self.stage_idx = 0
-
-    def _load_metadata(self):
-        with open(self.meta_path, 'r') as txt_file:
-            lines = txt_file.readlines()
-            metadata = [x.strip() for x in lines]
-        if self.subsample is not None:
-            metadata = metadata.sample(self.subsample, random_state=0)
-        # metadata['caption'] = metadata['name']
-        # del metadata['name']
-        self.metadata = metadata
-        # self.metadata.dropna(inplace=True)
-        # self.metadata['caption'] = self.metadata['caption'].str[:350]
-
-    def _get_video_path(self, sample):
-        rel_video_fp = str(sample) #+ '.gif'
-        full_video_fp = os.path.join(self.data_dir, rel_video_fp)
-        return full_video_fp, rel_video_fp
-
-    def get_fs_based_on_schedule(self, frame_strides, schedule):
-        # nstage=len_fps_schedule + 1
-        assert (len(frame_strides) == len(schedule) + 1)
-        global_step = self.counter // self.bs_per_gpu  # TODO: support resume.
-        stage_idx = bisect.bisect(schedule, global_step)
-        frame_stride = frame_strides[stage_idx]
-        # log stage change
-        if stage_idx != self.stage_idx:
-            print(
-                f'fps stage: {stage_idx} start ... new frame stride = {frame_stride}')
-            self.stage_idx = stage_idx
-        return frame_stride
-
-    def get_fs_based_on_probs(self, frame_strides, probs):
-        assert (len(frame_strides) == len(probs))
-        return random.choices(frame_strides, weights=probs)[0]
-
-    def get_fs_randomly(self, frame_strides):
-        return random.choice(frame_strides)
-
-    def __getitem__(self, index):
-
-        if isinstance(self.frame_stride, list) or isinstance(self.frame_stride, omegaconf.listconfig.ListConfig):
-            if self.fps_schedule is not None:
-                frame_stride = self.get_fs_based_on_schedule(
-                    self.frame_stride, self.fps_schedule)
-            elif self.fs_probs is not None:
-                frame_stride = self.get_fs_based_on_probs(
-                    self.frame_stride, self.fs_probs)
-            else:
-                frame_stride = self.get_fs_randomly(self.frame_stride)
-        else:
-            frame_stride = self.frame_stride
-        assert (isinstance(frame_stride, int)), type(frame_stride)
-
+    def __getitem__(self, f_idx):
         while True:
-            index = index % len(self.metadata)
-            sample = self.metadata[index]
-            video_path, rel_fp = self._get_video_path(sample)
-            # caption = sample['caption']+self.trigger_word
-            caption = 'a person is smiling'
-            
-            
-            # make reader
-            try:                
-                if self.load_raw_resolution:
-                    # video_reader = VideoReader(video_path, ctx=cpu(0))
-                    video_reader = imageio.mimread(video_path)
+            f_idx = f_idx % len(self.meta_info_list)
+            try:
+                meta_f = self.meta_info_list[f_idx]
+                video_meta = load_msgpack_list(meta_f)
+                # video_meta[0].keys(): ['frames', 'video_file', 'num_frames']
+                # assert len(video_meta) ==1
+                video_meta = video_meta[0]
+                num_frames = video_meta['num_frames']
+                
+                '''
+                frame_metas: dict
+                    {frame_idx: 
+                        {
+                            'caption': "The 30 years old female's emotion is sad, then turns into sad", 
+                            'img': 'videos1600_gen/worker0/conditions/10040716/frames/0.png', 
+                            'landmarks': 'videos1600_gen/worker0/conditions/10040716/landmarks/0.pkl'
+                        }
+                    }
+                '''
+                frame_metas = video_meta['frames']
 
-                else:
-                    json_path = video_path.replace('gifs', 'landmarks').replace('.gif','.json')
-                    with open(json_path) as f:
-                        info = json.load(f)
-                    # video_reader = VideoReader(video_path, ctx=cpu(
-                    #     0), width=self.resolution[1], height=self.resolution[0])
-                    reader = imageio.mimread(video_path,memtest=False)
-                    width, height =  reader[0].shape[:2]
-                    # reader = imageio.get_reader(gif_input_path)
-                    # width, height =  reader.get_meta_data()['source_size']
-                    new_width, new_height = self.resolution
+                # sample strided frames
+                frame_stride = self.frame_stride
+                all_frames = list(range(0, num_frames, frame_stride))
+                if len(all_frames) < self.video_length:  # recal a max fs
+                    frame_stride = num_frames // self.video_length
+                    assert (frame_stride != 0)
+                    all_frames = list(range(0, num_frames, frame_stride))
 
-                    frames_ldmks = []
-                    frames = []
-                    for f_idx in range(len(reader)):
-                        frame = reader[f_idx]
-                        width, height =  frame.shape[:2]
-                        ldmks = info['frames'][f_idx]['faces'][-1]['landmarks']
-                        x_list, y_list = [x for x,y in ldmks], [y for x,y in ldmks]
-                        x_min,x_max = int(min(x_list)), int(max(x_list))
-                        y_min,y_max = int(min(y_list)), int(max(y_list))
-                        h_delta = min(int(height-y_max), y_min)
-                        crop_y1 = y_min - h_delta
-                        crop_y2 = y_max + h_delta
-                        h = crop_y2 -crop_y1
-                        w_delta = (h - (x_max-x_min)) / 2
-                        crop_x1 = int(x_min - w_delta)
-                        crop_x2 = int(x_max + w_delta)
+                # select a random clip
+                rand_idx = random.randint(0, len(all_frames) - self.video_length)
+                frame_indices = all_frames[rand_idx:rand_idx+self.video_length]
+                # print('frame_indices', frame_indices)
+                select_frame_metas = [frame_metas[i] for i in frame_indices]
+                frames_captions = []
+                frames_imgs_pathes = []
+                frames_landmarks_pathes = []
+                frames_faceparsing_pathes = []
+                # 'img' example: videos1600_gen/worker0/conditions/3402898/frames/761.png
+                # 'landmarks' example: videos1600_gen/worker0/conditions/3402898/landmarks/772.pkl
+                # fsq gen fp: /data00/Datasets/Videos/videos4000_gen/worker2/conditions/6033644/labels/51.png
+                # self.local_data_prefix = '/data00/'
+                
+                for frame_meta in select_frame_metas:
+                    frames_captions.append(frame_meta['caption'])
+                    frames_imgs_pathes.append(frame_meta['img'].replace(self.local_data_prefix, self.data_prefix))
+                    frames_landmarks_pathes.append(frame_meta['landmarks'].replace(self.local_data_prefix, self.data_prefix))
+                    if self.use_faceparsing:
+                        frames_faceparsing_pathes.append(frame_meta['faceparsing'].replace(self.local_data_prefix, self.data_prefix))
+                worker_info = torch.utils.data.get_worker_info()
+                # print('frames_landmarks_pathes', frames_landmarks_pathes)
+                # libpng error: bad parameters to zlib                                                                                                                                                          
+                # frames_imgs = [cv2.imread(x) for x in frames_imgs_pathes]
 
-                        cropped_frame = frame[crop_y1:crop_y2, crop_x1:crop_x2, :]
-                        resized_frame = cv2.resize(cropped_frame, (new_height, new_width))
+                # RGB mode
+                frames_imgs = [np.array(Image.open(open(x,'rb'))) for x in frames_imgs_pathes]
+                '''
+                face parsing:
+                0-10 分别代表： ['background', 'face', 'rb', 'lb', 're', 'le', 'nose', 'ulip', 'imouth', 'llip', 'hair']                
+                1. 数值为10的头发舍掉
+                2. 多张脸重叠，有可能导致 数值>10，也应该舍掉
+                '''
+                if self.use_faceparsing:
+                    faceparsing_imgs = []
+                    face_masks = []
+                    for x in frames_faceparsing_pathes:
+                        faceparsing_img = np.array(Image.open(open(x,'rb')))[:,:,:1]
+                        face_masks.append(faceparsing_img>0)
+                        faceparsing_img[faceparsing_img>=10] = 0
+                        faceparsing_imgs.append(faceparsing_img)                
+
+                frames_face_infos = [pickle.load(open(x,'rb')) for x in frames_landmarks_pathes]
+                # print('frames_face_infos', frames_face_infos)
+
+                # 只保留了一个置信度最高的landmark
+                # frames_face_infos[0].keys()：['bbox', 'kps', 'det_score', 'landmark_3d_68', 'pose', 'landmark_2d_106', 'gender', 'age', 'embedding']
+                landmarks = [x[0]['landmark_2d_106'] for x in frames_face_infos]
+                h, w, c = frames_imgs[0].shape
+                # img_tensor=torch.zeros((h,w), dtype=torch.float)
+                # frames_landmarks = [gen_landmark_control_input(img_tensor, x) for x in landmarks]
+
+                # crop and resize according face
+                x_min, y_min, x_max, y_max = frames_face_infos[0][0]['bbox']
+                x_min = max(0, int(x_min))
+                y_min = max(0, int(y_min))
+                x_max = min(w, int(x_max))
+                y_max = min(h, int(y_max))
+                h_delta = min(int(h-y_max), y_min, (y_max-y_min)//2)
+                crop_y1 = max(y_min - h_delta, 0)
+                crop_y2 = min(y_max + h_delta, h)
+                h = crop_y2 -crop_y1
+                w_delta = max(0, (h - (x_max-x_min)) / 2)
+                crop_x1 = max(int(x_min - w_delta),0)
+                crop_x2 = min(int(x_max + w_delta),w)
+                #############################
+                frames_landmarks = []
+                new_height, new_width = self.resolution 
+                  
+                for landmark in landmarks:
+                    new_landmarks = [] 
+                    img_tensor = torch.zeros(new_height, new_width,1)
+                    for x,y in landmark:
+                        xc = x - crop_x1
+                        yc = y - crop_y1
+                        scale_x = new_width / (crop_x2-crop_x1)
+                        scale_y = new_height / (crop_y2-crop_y1)
+                        xr = int(xc * scale_x)
+                        yr = int(yc * scale_y)
+                        img_tensor[yr,xr] = 1
+                        new_landmarks.append((xr,yr))
                         
-                        frame_ldmks = np.zeros((new_height, new_width,1))
-                        for x,y in ldmks:
-                            xc = x - crop_x1
-                            yc = y - crop_y1
-                            scale_x = new_width / (crop_x2-crop_x1)
-                            scale_y = new_height / (crop_y2-crop_y1)
-                            xr = int(xc * scale_x)
-                            yr = int(yc * scale_y)
-                            frame_ldmks[yr,xr] = 1
-                        frames_ldmks.append(frame_ldmks)
-                        frames.append(resized_frame) 
-                if len(frames) < self.video_length or len(reader[0].shape) < 3:
-                    print(
-                        f"video length ({len(frames)}) is smaller than target length({self.video_length})")
-                    index += 1
-                    continue
+                    if self.ldmk_use_gaussian:
+                        gaussian_response = generate_gaussian_response([new_height, new_width], new_landmarks, sigma=1)
+                        frames_landmarks.append(gaussian_response) 
+                    else:           
+                        frames_landmarks.append(img_tensor)
+                #############################
+                if self.ldmk_use_gaussian:
+                    frames_landmarks = torch.tensor(np.array(frames_landmarks)).permute(0, 3, 1, 2).float()   
                 else:
-                    pass
-            except:
-                index += 1
-                # print(f"Load video failed! path = {video_path}")
-                continue
+                    frames_landmarks = torch.stack(frames_landmarks).permute(0, 3, 1, 2).float()
 
-            # # sample strided frames
-            # all_frames = list(range(0, len(frames), frame_stride))
-            # if len(all_frames) < self.video_length:  # recal a max fs
-            #     frame_stride = len(frames) // self.video_length
-            #     assert (frame_stride != 0)
-            #     all_frames = list(range(0, len(frames), frame_stride))
+                size = (new_height, new_width)
+                frames_imgs = interpolate(frames_imgs, crop_y1, crop_y2, crop_x1, crop_x2, size)
+                frames_imgs = (frames_imgs / 255 - 0.5) * 2
+                if self.use_faceparsing:
+                    faceparsing_imgs = interpolate(faceparsing_imgs, crop_y1, crop_y2, crop_x1, crop_x2, size)
+                    faceparsing_imgs = faceparsing_imgs / 11.0
+                    face_masks = interpolate(face_masks, crop_y1, crop_y2, crop_x1, crop_x2, size)                
 
-            # select a random clip
-            rand_idx = random.randint(0, len(frames) - self.video_length + 1)
-            try:
-                # frames = video_reader.get_batch(frame_indices)
-                frames = frames[rand_idx:rand_idx+self.video_length]
-                frames_ldmks = frames_ldmks[rand_idx:rand_idx+self.video_length]
-
-                assert (
-                    len(frames) == self.video_length), f'{len(frames)}, self.video_length={self.video_length}'
-                frames = torch.tensor(np.array(frames)).permute(
-                    0, 3, 1, 2).float()[:,:3,:,:]  # [t,h,w,c] -> [t,c,h,w]
-                frames_ldmks = torch.tensor(np.array(frames_ldmks)).permute(
-                    0, 3, 1, 2).float() # [t,h,w,c] -> [t,c,h,w]
-        
+                frames_caption_one = 'The person turns ' +  frames_captions[0].split(" ")[-1] + ' into ' + frames_captions[-1].split(" ")[-1]
+                # print('frames_caption_one:', frames_caption_one)
+                
+                if self.is_image:
+                    frames_imgs = frames_imgs[0]
+                    frames_landmarks = frames_landmarks[0]
+                    if self.use_faceparsing:
+                        faceparsing_imgs = faceparsing_imgs[0]
+                        face_masks = face_masks[0]
+                    
+                frames_captions = ['The person is ' + x.split(" ")[-1] for x in frames_captions]
+                assert(len(frames_captions) > 0)
+                if self.use_faceparsing:
+                    sample = dict(pixel_values=frames_imgs, 
+                                landmarks=frames_landmarks, 
+                                texts=frames_captions,
+                                face_parsings = faceparsing_imgs,
+                                face_masks = face_masks,
+                                )
+                else:
+                    sample = dict(pixel_values=frames_imgs, 
+                                landmarks=frames_landmarks, 
+                                texts=frames_captions,
+                                )
+                
+                # print('debug sample')
+                # for x,y in sample.items():
+                #     try:
+                #         print(x, y.shape)
+                #     except:
+                #         print(x, len(y))
+                #         # print(x, y)
+                #         continue
+                    
                 break
             except:
-                print(f"Get frames failed! path = {video_path}")
-                index += 1
+                f_idx += 1
                 continue
-
         
-        # print('frames', frames.shape, frames_ldmks.shape)
-        if self.spatial_transform is not None:
-            frames = self.spatial_transform(frames)
-        if self.resolution is not None:
-            assert (frames.shape[2] == self.resolution[0] and frames.shape[3] ==
-                    self.resolution[1]), f'frames={frames.shape}, self.resolution={self.resolution}'
-        frames = (frames / 255 - 0.5) * 2
-        # frames = frames / 255
-
-        # fps_ori = video_reader.get_avg_fps()
-        # fps_clip = fps_ori // frame_stride
-        # if self.fps_max is not None and fps_clip > self.fps_max:
-        #     fps_clip = self.fps_max
-
-        # data = {'video': frames, 'caption': caption, 'path': video_path,
-        #         'fps': fps_clip, 'frame_stride': frame_stride}
-
-        if self.fps_schedule is not None:
-            self.counter += 1
-        
-        
-        if self.is_image:
-            frames = frames[0]
-        sample = dict(pixel_values=frames, landmarks=frames_ldmks, text=caption, rel_fp=rel_fp)
         return sample
     
     def __len__(self):
-        return len(self.metadata)
+        return len(self.meta_info_list)
 
+def interpolate(data, crop_y1, crop_y2, crop_x1, crop_x2, size):
+    data = torch.tensor(np.array(data)).permute(0, 3, 1, 2).float()
+    data = F.interpolate(input=data[...,crop_y1:crop_y2, crop_x1:crop_x2], size=size, mode='bilinear', align_corners=False)
+    return data
 
-class CelebvText(Dataset):
-    def __init__(self,
-                 meta_path,
-                 data_dir,
-                 subsample=None,
-                 video_length=16,
-                 resolution=[256, 256],
-                 frame_stride=1,
-                 spatial_transform=None,
-                 crop_resolution=None,
-                 fps_max=None,
-                 load_raw_resolution=False,
-                 fps_schedule=None,
-                 fs_probs=None,
-                 bs_per_gpu=None,
-                 trigger_word='',
-                 dataname='',
-                 is_image=False,
-                 ):
-        self.meta_path = meta_path
-        self.data_dir = data_dir
-        self.subsample = subsample
-        self.video_length = video_length
-        self.resolution = [resolution, resolution] if isinstance(
-            resolution, int) else resolution
-        self.frame_stride = frame_stride
-        self.fps_max = fps_max
-        self.load_raw_resolution = load_raw_resolution
-        self.fs_probs = fs_probs
-        self.trigger_word = trigger_word
-        self.dataname = dataname
-        self.is_image = is_image
+def gaussian(x, y, sigma):
+    exponent = -(x**2 + y**2) / (2 * sigma**2)
+    return np.exp(exponent) / (2 * np.pi * sigma**2)
 
-        self._load_metadata()
-        if spatial_transform is not None:
-            if spatial_transform == "random_crop":
-                self.spatial_transform = transforms.RandomCrop(crop_resolution)
-            elif spatial_transform == "resize_center_crop":
-                assert (self.resolution[0] == self.resolution[1])
-                self.spatial_transform = transforms.Compose([
-                    transforms.Resize(resolution),
-                    transforms.CenterCropVideo(resolution),
-                ])
-            else:
-                raise NotImplementedError
-        else:
-            self.spatial_transform = None
-
-        self.fps_schedule = fps_schedule
-        self.bs_per_gpu = bs_per_gpu
-        if self.fps_schedule is not None:
-            assert (self.bs_per_gpu is not None)
-            self.counter = 0
-            self.stage_idx = 0
-
-    def _load_metadata(self):
-        with open(self.meta_path, 'r') as txt_file:
-            lines = txt_file.readlines()
-            metadata = [x.strip() for x in lines]
-        if self.subsample is not None:
-            metadata = metadata.sample(self.subsample, random_state=0)
-        # metadata['caption'] = metadata['name']
-        # del metadata['name']
-        self.metadata = metadata
-        # self.metadata.dropna(inplace=True)
-        # self.metadata['caption'] = self.metadata['caption'].str[:350]
-
-    def _get_video_path(self, sample):
-        rel_video_fp = str(sample)
-        full_video_fp = os.path.join(self.data_dir, rel_video_fp)
-        return full_video_fp, rel_video_fp
-
-    def get_fs_based_on_schedule(self, frame_strides, schedule):
-        # nstage=len_fps_schedule + 1
-        assert (len(frame_strides) == len(schedule) + 1)
-        global_step = self.counter // self.bs_per_gpu  # TODO: support resume.
-        stage_idx = bisect.bisect(schedule, global_step)
-        frame_stride = frame_strides[stage_idx]
-        # log stage change
-        if stage_idx != self.stage_idx:
-            print(
-                f'fps stage: {stage_idx} start ... new frame stride = {frame_stride}')
-            self.stage_idx = stage_idx
-        return frame_stride
-
-    def get_fs_based_on_probs(self, frame_strides, probs):
-        assert (len(frame_strides) == len(probs))
-        return random.choices(frame_strides, weights=probs)[0]
-
-    def get_fs_randomly(self, frame_strides):
-        return random.choice(frame_strides)
-
-    def __getitem__(self, index):
-
-        if isinstance(self.frame_stride, list) or isinstance(self.frame_stride, omegaconf.listconfig.ListConfig):
-            if self.fps_schedule is not None:
-                frame_stride = self.get_fs_based_on_schedule(
-                    self.frame_stride, self.fps_schedule)
-            elif self.fs_probs is not None:
-                frame_stride = self.get_fs_based_on_probs(
-                    self.frame_stride, self.fs_probs)
-            else:
-                frame_stride = self.get_fs_randomly(self.frame_stride)
-        else:
-            frame_stride = self.frame_stride
-        assert (isinstance(frame_stride, int)), type(frame_stride)
-
-        while True:
-            index = index % len(self.metadata)
-            sample = self.metadata[index]
-            video_path, rel_fp = self._get_video_path(sample)
-            # caption = sample['caption']+self.trigger_word
-            
-            # make reader
-            try:
-                emotion_desc_filepath = video_path.replace('videos/celebvtext_6','descripitions/emotion').replace('.mp4','.txt')
-                with open(emotion_desc_filepath, 'r') as txt_file:
-                    lines = txt_file.readlines()
-                    lines = [x.strip() for x in lines]
-                captions = lines[0].split(',')
-                if 'begin' in captions[0] and len(captions[0].split(' ')) < 5:
-                    captions = captions[1:]
-                if 'end' in captions[-1] and len(captions[-1].split(' ')) < 5:
-                    captions = captions[:-1]
-
-                if self.load_raw_resolution:
-                    video_reader = VideoReader(video_path, ctx=cpu(0))
-                else:
-                    video_reader = VideoReader(video_path, ctx=cpu(
-                        0), width=self.resolution[1], height=self.resolution[0])
-                if len(video_reader) < self.video_length:
-                    print(
-                        f"video length ({len(video_reader)}) is smaller than target length({self.video_length})")
-                    index += 1
-                    continue
-                else:
-                    pass
-            except:
-                index += 1
-                print(f"Load video failed! path = {video_path}")
-                continue
-
-            # sample strided frames
-            all_frames = list(range(0, len(video_reader), frame_stride))
-            if len(all_frames) < self.video_length:  # recal a max fs
-                frame_stride = len(video_reader) // self.video_length
-                assert (frame_stride != 0)
-                all_frames = list(range(0, len(video_reader), frame_stride))
-
-            # select a random clip
-            rand_idx = random.randint(0, len(all_frames) - self.video_length)
-            frame_indices = all_frames[rand_idx:rand_idx+self.video_length]
-
-            # select a caption: 这里没有帧级别的标注，所以对时间均分取对应的caption了
-            caption_idx = int(rand_idx / len(all_frames) * len(captions))
-            caption = captions[caption_idx]
-
-            try:
-                frames = video_reader.get_batch(frame_indices)
-                break
-            except:
-                print(f"Get frames failed! path = {video_path}")
-                index += 1
-                continue
-
-        assert (
-            frames.shape[0] == self.video_length), f'{len(frames)}, self.video_length={self.video_length}'
-        frames = torch.tensor(frames.asnumpy()).permute(
-            0, 3, 1, 2).float()  # [t,h,w,c] -> [t,c,h,w]
-        if self.spatial_transform is not None:
-            frames = self.spatial_transform(frames)
-        if self.resolution is not None:
-            assert (frames.shape[2] == self.resolution[0] and frames.shape[3] ==
-                    self.resolution[1]), f'frames={frames.shape}, self.resolution={self.resolution}'
-        frames = (frames / 255 - 0.5) * 2
-        # frames = frames / 255
-
-        # fps_ori = video_reader.get_avg_fps()
-        # fps_clip = fps_ori // frame_stride
-        # if self.fps_max is not None and fps_clip > self.fps_max:
-        #     fps_clip = self.fps_max
-
-        # data = {'video': frames, 'caption': caption, 'path': video_path,
-        #         'fps': fps_clip, 'frame_stride': frame_stride}
-
-        if self.fps_schedule is not None:
-            self.counter += 1
-        
-        
-        if self.is_image:
-            frames = frames[0]
-        sample = dict(pixel_values=frames, text=caption)
-        return sample
+def generate_gaussian_response(image_shape, landmarks, sigma=3):
+    height, width = image_shape[:2]
+    heatmap = np.zeros((height, width), dtype=np.float32)
+    for x, y in landmarks:
+        x, y = int(x), int(y)
+        if 0 <= x < width and 0 <= y < height:
+            for i in range(-sigma, sigma+1):
+                for j in range(-sigma, sigma+1):
+                    new_x, new_y = x + i, y + j
+                    if 0 <= new_x < width and 0 <= new_y < height:
+                        heatmap[new_y, new_x] += gaussian(i, j, sigma)                        
     
-    def __len__(self):
-        return len(self.metadata)
-
-class EmotionsGif(Dataset):
-    """
-    EmotionsGif Dataset.
-    Assumes EmotionsGif data is structured as follows.
-    collected_emotions_gif/
-        Frown/
-            1.gif
-            2.gif
-        Gape/
-            1.gif
-            2.gif
-        girl_smile_gif/
-            asia_girl_smile_1.gif
-            asia_girl_smile_2.gif
-            ...
-    """
-
-    def __init__(self,
-                 meta_path,
-                 data_dir,
-                 emotions_type,
-                 subsample=None,
-                 video_length=8,
-                 resolution=[256, 256],
-                 frame_stride=1,
-                 spatial_transform=None,
-                 crop_resolution=None,
-                 fps_max=None,
-                 load_raw_resolution=False,
-                 fps_schedule=None,
-                 fs_probs=None,
-                 bs_per_gpu=None,
-                 trigger_word='',
-                 dataname='',
-                 is_image=False,
-                 ):
-        self.meta_path = meta_path
-        self.data_dir = data_dir
-        self.subsample = subsample
-        self.video_length = video_length
-        self.resolution = [resolution, resolution] if isinstance(
-            resolution, int) else resolution
-        self.frame_stride = frame_stride
-        self.fps_max = fps_max
-        self.load_raw_resolution = load_raw_resolution
-        self.fs_probs = fs_probs
-        self.trigger_word = trigger_word
-        self.dataname = dataname
-        self.is_image = is_image
-        
-        # self.all_emotions_type = ["all", "frown", "gape", "girl_smile_gif", "Pout", "Raise_eyebrows", "Roll_eyes", "smile", "wink"]
-        self.all_emotions_type = os.listdir(self.data_dir)
-        assert (emotions_type == "all" or emotions_type in self.all_emotions_type)
-        self.emotions_type = emotions_type
-
-        if meta_path != None:
-            self._load_metadata()
-        else:
-            if emotions_type != "all":
-                self.metadata = [emotions_type + '/' + gif_file for gif_file in os.listdir(os.path.join(self.data_dir, emotions_type))]
-            else:
-                self.metadata = []
-                for emo_type in self.all_emotions_type:
-                    self.metadata.extend([emo_type + '/' + gif_file for gif_file in os.listdir(os.path.join(self.data_dir, emo_type))])
-        
-        if spatial_transform is not None:
-            if spatial_transform == "random_crop":
-                self.spatial_transform = transforms.RandomCrop(crop_resolution)
-            elif spatial_transform == "resize_center_crop":
-                assert (self.resolution[0] == self.resolution[1])
-                self.spatial_transform = transforms.Compose([
-                    transforms.Resize(resolution),
-                    transforms.CenterCropVideo(resolution),
-                ])
-            else:
-                raise NotImplementedError
-        else:
-            self.spatial_transform = None
-
-        self.fps_schedule = fps_schedule
-        self.bs_per_gpu = bs_per_gpu
-        if self.fps_schedule is not None:
-            assert (self.bs_per_gpu is not None)
-            self.counter = 0
-            self.stage_idx = 0
-
-    def _load_metadata(self):
-        with open(self.meta_path, 'r') as txt_file:
-            lines = txt_file.readlines()
-            metadata = [x.strip() for x in lines]
-        if self.subsample is not None:
-            metadata = metadata.sample(self.subsample, random_state=0)
-        # metadata['caption'] = metadata['name']
-        # del metadata['name']
-        self.metadata = metadata  # 就是一个列表
-        # self.metadata.dropna(inplace=True)
-        # self.metadata['caption'] = self.metadata['caption'].str[:350]
-
-    def _get_video_path(self, sample):
-        rel_video_fp = str(sample) #+ '.gif'
-        full_video_fp = os.path.join(self.data_dir, rel_video_fp)
-        return full_video_fp, rel_video_fp
-
-    def get_fs_based_on_schedule(self, frame_strides, schedule):
-        # nstage=len_fps_schedule + 1
-        assert (len(frame_strides) == len(schedule) + 1)
-        global_step = self.counter // self.bs_per_gpu  # TODO: support resume.
-        stage_idx = bisect.bisect(schedule, global_step)
-        frame_stride = frame_strides[stage_idx]
-        # log stage change
-        if stage_idx != self.stage_idx:
-            print(
-                f'fps stage: {stage_idx} start ... new frame stride = {frame_stride}')
-            self.stage_idx = stage_idx
-        return frame_stride
-
-    def get_fs_based_on_probs(self, frame_strides, probs):
-        assert (len(frame_strides) == len(probs))
-        return random.choices(frame_strides, weights=probs)[0]
-
-    def get_fs_randomly(self, frame_strides):
-        return random.choice(frame_strides)
-
-    def __getitem__(self, index):
-
-        if isinstance(self.frame_stride, list) or isinstance(self.frame_stride, omegaconf.listconfig.ListConfig):
-            if self.fps_schedule is not None:
-                frame_stride = self.get_fs_based_on_schedule(
-                    self.frame_stride, self.fps_schedule)
-            elif self.fs_probs is not None:
-                frame_stride = self.get_fs_based_on_probs(
-                    self.frame_stride, self.fs_probs)
-            else:
-                frame_stride = self.get_fs_randomly(self.frame_stride)
-        else:
-            frame_stride = self.frame_stride
-        assert (isinstance(frame_stride, int)), type(frame_stride)
-
-        while True:
-            index = index % len(self.metadata)
-            sample = self.metadata[index]
-            # video_path, rel_fp = self._get_video_path(sample)
-            # caption = sample['caption']+self.trigger_word
-            
-            video_path = os.path.join(self.data_dir, sample)
-            rel_fp = sample
-
-            if self.emotions_type == "all":
-                emo_type = video_path.split('/')[-2]
-            else:
-                emo_type = self.emotions_type
-
-            # 制定 caption
-            if emo_type == "frown":
-                caption = 'a person is frowning'
-            elif emo_type == "gape":
-                caption = 'a person is gaping'
-            elif emo_type == "girl_smile":
-                caption = 'a girl is smiling'
-            elif emo_type == "pout":
-                caption = 'a person is pouting'
-            elif emo_type == "raise_eyebrows":
-                caption = 'a persion is raising eyebrows'
-            elif emo_type == "roll_eyes":
-                caption = 'a person is rolling eyes'
-            elif emo_type == "smile":
-                caption = 'a person is smiling'
-            elif emo_type == "wink":
-                caption = 'a person is winking'
-            else:
-                raise NotImplementedError
-                       
-            # make reader
-            try:                
-                if self.load_raw_resolution:   # 没有走这一支
-                    # video_reader = VideoReader(video_path, ctx=cpu(0))
-                    video_reader = imageio.mimread(video_path)
-
-                else:
-                    json_path = video_path.replace('.gif','.json')
-                    with open(json_path) as f:
-                        info = json.load(f)  # 这个就是landmark的json文件
-                    
-                    # video_reader = VideoReader(video_path, ctx=cpu(
-                    #     0), width=self.resolution[1], height=self.resolution[0])
-                    reader = imageio.mimread(video_path)
-                    width, height =  reader[0].shape[:2]
-                    # reader = imageio.get_reader(gif_input_path)
-                    # width, height =  reader.get_meta_data()['source_size']
-                    new_width, new_height = self.resolution
-                    
-                    
-                    ldmks = info['frames'][0]['faces'][-1]['landmarks']
-                    x_list, y_list = [x for x,y in ldmks], [y for x,y in ldmks]
-                    x_min,x_max = int(min(x_list)), int(max(x_list))
-                    y_min,y_max = int(min(y_list)), int(max(y_list))
-                    h_delta = min(int(height-y_max), y_min)
-                    crop_y1 = y_min - h_delta
-                    crop_y2 = y_max + h_delta
-                    h = crop_y2 -crop_y1
-                    w_delta = (h - (x_max-x_min)) / 2
-                    crop_x1 = int(x_min - w_delta)
-                    crop_x2 = int(x_max + w_delta)
-                    
-
-                    # print('x_min,x_max', x_min,x_max)
-                    # print('y_min,y_max', y_min,y_max)
-                    # print(h,w_delta)
-
-                    # scale = min(new_width/width, new_height/height)
-                    # crop_width = int(width * scale)
-                    # crop_height = int(height * scale)
-                    # left = (width - crop_width) // 2
-                    # top = (height - crop_height) // 2
-                    # right = left + crop_width
-                    # bottom = top + crop_height
-                    video_reader = []
-                    for frame in reader:
-                        # cropped_frame = frame[top:bottom, left:right]
-                        
-                        cropped_frame = frame[crop_y1:crop_y2, crop_x1:crop_x2, :]
-                        resized_frame = cv2.resize(cropped_frame, (new_height, new_width))
-                        video_reader.append(resized_frame)
-                if len(video_reader) < self.video_length or len(reader[0].shape) < 3:
-                    print(
-                        f"video length ({len(video_reader)}) is smaller than target length({self.video_length})")
-                    index += 1
-                    continue
-                else:
-                    pass
-            except:
-                index += 1
-                print(f"Load video failed! path = {video_path}")
-                continue
-
-            # sample strided frames
-            all_frames = list(range(0, len(video_reader), frame_stride))
-            if len(all_frames) < self.video_length:  # recal a max fs
-                frame_stride = len(video_reader) // self.video_length
-                assert (frame_stride != 0)
-                all_frames = list(range(0, len(video_reader), frame_stride))
-
-            # select a random clip
-            rand_idx = random.randint(0, len(all_frames) - self.video_length)
-            frame_indices = all_frames[rand_idx:rand_idx+self.video_length]
-            try:
-                # frames = video_reader.get_batch(frame_indices)
-                frames = video_reader[rand_idx:rand_idx+self.video_length]
-
-                assert (
-                    len(frames) == self.video_length), f'{len(frames)}, self.video_length={self.video_length}'
-                frames = torch.tensor(np.array(frames)).permute(
-                    0, 3, 1, 2).float()[:,:3,:,:]  # [t,h,w,c] -> [t,c,h,w]
-        
-                break
-            except:
-                print(f"Get frames failed! path = {video_path}")
-                index += 1
-                continue
-
-        
-        # print('frames', frames.shape)
-        if self.spatial_transform is not None:
-            frames = self.spatial_transform(frames)
-        if self.resolution is not None:
-            assert (frames.shape[2] == self.resolution[0] and frames.shape[3] ==
-                    self.resolution[1]), f'frames={frames.shape}, self.resolution={self.resolution}'
-        frames = (frames / 255 - 0.5) * 2
-        # frames = frames / 255
-
-        # fps_ori = video_reader.get_avg_fps()
-        # fps_clip = fps_ori // frame_stride
-        # if self.fps_max is not None and fps_clip > self.fps_max:
-        #     fps_clip = self.fps_max
-
-        # data = {'video': frames, 'caption': caption, 'path': video_path,
-        #         'fps': fps_clip, 'frame_stride': frame_stride}
-
-        if self.fps_schedule is not None:
-            self.counter += 1
-        
-        
-        if self.is_image:
-            frames = frames[0]
-        sample = dict(pixel_values=frames, text=caption, rel_fp=rel_fp)
-        return sample
-    
-    def __len__(self):
-        return len(self.metadata)
-
-
+    heatmap[np.isnan(heatmap)] = 0
+    max_value = np.max(heatmap)
+    if max_value != 0:
+        heatmap /= max_value
+    heatmap = heatmap[:,:,np.newaxis]
+    return heatmap 
 
 if __name__ == '__main__':
-    '''
-    invilid datas: 
-        smile_149.gif
-    '''
-        
-    local_path = '/data/users/liangjiajun/Datasets/'
-    mount_path = '/dataset00/'
-    meta_path = mount_path + '/Videos/smile/filelist.txt'
-    data_dir = mount_path + '/Videos/smile/gifs'
+    local_data_prefix = 'videos1600_gen/'
+    data_prefix = 's3://ljj-sh/Datasets/Videos/videos1600_gen/'
+    data_dir = 's3://ljj-sh/Datasets/Videos/msgpacks/videos_231002/'
+
+    # data_prefix = 's3://ljj-sh/'
+    # local_data_prefix = '/data00/'
+    # data_dir = 's3://ljj-sh/Datasets/Videos/msgpacks/videos4000_gen_labels/'
+
+    ldmk_use_gaussian = True
     frame_stride = 1
-    dataset = SmileGif(meta_path, data_dir, frame_stride=frame_stride)
-    print('dataset size is:', len(dataset))
+    is_image = False
+    video_length = 16
+    use_faceparsing = False
+    save_dir = f'debug{video_length}'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    dataset = S3VideosDataset(data_dir, data_prefix, local_data_prefix, use_faceparsing=use_faceparsing, ldmk_use_gaussian=True, video_length=video_length, frame_stride=frame_stride, is_image=is_image)
+    print('dataset size is ', len(dataset))
 
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=4, num_workers=16,)
+        dataset, batch_size=2, num_workers=1,)
+    
     for idx, batch in enumerate(dataloader):
-        
-        # print(batch["pixel_values"].shape, batch["text"])
-        # print(batch["pixel_values"].max(), batch["pixel_values"].min())
-        rel_fp= batch['rel_fp']
-        video_array = ((batch["pixel_values"][0].permute(0, 2, 3, 1)+1)/2 * 255).numpy().astype(np.uint8)
-        ldmks_array = ((batch["landmarks"][0].permute(0, 2, 3, 1)) * 255).numpy().astype(np.uint8)
+        print(batch["pixel_values"].shape, batch["texts"])
+        print(batch["pixel_values"].max(), batch["pixel_values"].min())
+        caption = batch["texts"][0][0].replace(' ', '_')
+        if is_image:
+            image_array = ((batch["pixel_values"][0].permute(1, 2, 0)+1)/2 * 255).numpy().astype(np.uint8)[...,::-1]
+            ldmks_array = ((batch["landmarks"][0].permute(1, 2, 0)) * 255).numpy().astype(np.uint8)
+            cv2.imwrite(f"{save_dir}/{caption}_image.png", image_array)
+            cv2.imwrite(f"{save_dir}/{caption}_ldmks.png", ldmks_array)
+        else:
+            # batch["pixel_values"] = batch["pixel_values"] * (1-batch["landmarks"])
+            video_array = ((batch["pixel_values"][0].permute(0, 2, 3, 1)+1)/2 * 255).numpy().astype(np.uint8)
+            ldmks_array = ((batch["landmarks"][0].permute(0, 2, 3, 1)) * 255).numpy().astype(np.uint8)
+            if use_faceparsing:
+                face_parsings_array = ((batch["face_parsings"][0].permute(0, 2, 3, 1)) * 255).numpy().astype(np.uint8)
+                masks_array = ((batch["face_masks"][0].permute(0, 2, 3, 1))).numpy().astype(np.uint8)
+            print('caption:', caption)
+            print('video_array', video_array.shape, video_array.max(), video_array.min())
+            print('ldmks_array', ldmks_array.shape, ldmks_array.max(), ldmks_array.min())
 
-        caption = batch["text"][0]
-        with imageio.get_writer(f"{rel_fp[0]}_{caption}_video.mp4", fps=30) as video_writer:
-            for frame in video_array:
-                video_writer.append_data(frame)
-        
-        with imageio.get_writer(f"{rel_fp[0]}_{caption}_ldmks.mp4", fps=30) as video_writer:
-            for frame in ldmks_array:
-                video_writer.append_data(frame)
+            with imageio.get_writer(f"{save_dir}/{idx}_{caption}_video.mp4", fps=30) as video_writer:
+                for frame in video_array:
+                    video_writer.append_data(frame)
+            
+            with imageio.get_writer(f"{save_dir}/{idx}_{caption}_ldmks_frames{video_length}.mp4", fps=30) as video_writer:
+                for frame in ldmks_array:
+                    video_writer.append_data(frame)
 
-        if idx >= 5:
+            if use_faceparsing:
+                with imageio.get_writer(f"{save_dir}/{idx}_{caption}_video_all.mp4", fps=30) as video_writer:
+                    for frame,ldmk,faceparsing,mask in zip(video_array,ldmks_array,face_parsings_array,masks_array):
+                        ldmk = np.repeat(ldmk, repeats=3, axis=2)
+                        faceparsing = np.repeat(faceparsing, repeats=3, axis=2)
+                        mask = np.repeat(mask, repeats=3, axis=2)
+                        frame[mask==0] = 0
+                        res = np.hstack((frame,ldmk,faceparsing))
+                        video_writer.append_data(res)    
+            else:
+                with imageio.get_writer(f"{save_dir}/{idx}_{caption}_video_all.mp4", fps=30) as video_writer:
+                    for frame,ldmk in zip(video_array,ldmks_array):
+                        ldmk = np.repeat(ldmk, repeats=3, axis=2)
+                        res = np.hstack((frame,ldmk))
+                        video_writer.append_data(res)    
+
+        if idx >= 100:
             break

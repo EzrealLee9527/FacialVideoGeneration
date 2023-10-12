@@ -93,15 +93,15 @@ def main(args):
                 adapter_module_state_dict = adapter_module_state_dict["state_dict"]
                 adapter_module_state_dict = {x.replace('module.',''):y for x,y in adapter_module_state_dict.items()}
             from animatediff.models.adapter_module import Adapter
-            model_adapter = Adapter(cin=64, channels=[320, 640, 1280, 1280][:4], nums_rb=2, ksize=1, sk=True, use_conv=False).to("cuda")
+            model_adapter = Adapter(cin=128, channels=[320, 640, 1280, 1280][:4], nums_rb=2, ksize=1, sk=True, use_conv=False).to("cuda")
             missing, unexpected = model_adapter.load_state_dict(adapter_module_state_dict)
             print(f'model_adapter missing {len(missing)}, unexpected {len(unexpected)}')
             # get landmarks
             # 待会儿写到config里
             from scripts.landmarks import get_landmarks
             import numpy as np
-            # video_path = '/dataset00/Videos/smile/gifs/smile_375.gif'
-            video_path = '/work00/AnimateDiff-adapter/templates/gakki_smile.gif'
+            video_path = '/dataset00/Videos/smile/gifs/smile_375.gif'
+            # video_path = '/work00/AnimateDiff-adapter/templates/gakki_smile.gif'
             # video_path = 'zy_datas/zy_wink_new.gif'
             frames_ldmks, frames = get_landmarks(video_path)
             frames_ldmks = torch.tensor(np.array(frames_ldmks)).permute(0,3,1,2).float().to("cuda")
@@ -111,7 +111,8 @@ def main(args):
 
             # eval using image format
             # f,c,h,w
-            adapter_features = model_adapter(frames_ldmks)
+            # adapter_features = model_adapter(frames_ldmks)
+            adapter_features = model_adapter(torch.concat((frames_ldmks, torch.zeros_like(frames_ldmks)),dim=1))
             # transfer adapter_features to video format (b c f h w)
             adapter_features = [x.permute(1,0,2,3).unsqueeze(0).repeat(2,1,1,1,1) for x in adapter_features]
             print('adapter_features', len(adapter_features), adapter_features[0].shape)
@@ -129,6 +130,7 @@ def main(args):
                             state_dict[key] = f.get_tensor(key)
                             
                     is_lora = all("lora" in k for k in state_dict.keys())
+                    print('is_lora:', is_lora)
                     if not is_lora:
                         base_state_dict = state_dict
                     else:
@@ -198,7 +200,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pretrained_model_path", type=str, default="runwayml/stable-diffusion-v1-5",)
-    parser.add_argument("--unet3d_pretrained_model_path", type=str, default='/huggingface00/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0',)
+    parser.add_argument("--unet3d_pretrained_model_path", type=str, default='/data00/huggingface/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0',)
     parser.add_argument("--inference_config",      type=str, default="configs/inference/inference.yaml")    
     parser.add_argument("--config",                type=str, required=True)
     
