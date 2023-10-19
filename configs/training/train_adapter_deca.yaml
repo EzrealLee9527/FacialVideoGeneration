@@ -1,0 +1,78 @@
+image_finetune: true
+s3_output_dir: "s3://ljj-sh/checkpoints/fansunqi/FacialVideoGeneration/outputs"
+output_dir: "outputs"
+pretrained_model_path: "runwayml/stable-diffusion-v1-5"
+unet3d_pretrained_model_path: '/data00/huggingface/hub/models--runwayml--stable-diffusion-v1-5/snapshots/c9ab35ff5f2c362e9e22fbafe278077e196057f0'
+adapter_model:
+  # pretrained_adapter: '/work00/AnimateDiff-adapter/outputs/train_smile_face_512_adapter-2023-08-31T11-10-04/checkpoints/checkpoint-epoch-500.ckpt'
+  cin: 384  # 若condition图片的形状是(h,w,c), cin = 64*c
+  con1_wo_texture: false
+  con2_texture: true
+  con3_depth: true
+  
+unet_additional_kwargs:
+  use_motion_module              : false
+  motion_module_resolutions      : [ 1,2,4,8 ]
+  unet_use_cross_frame_attention : false
+  unet_use_temporal_attention    : false
+
+  motion_module_type: Vanilla
+  motion_module_kwargs:
+    num_attention_heads                : 8
+    num_transformer_block              : 1
+    attention_block_types              : [ "Temporal_Self", "Temporal_Self" ]
+    temporal_position_encoding         : true
+    temporal_position_encoding_max_len : 24
+    temporal_attention_dim_div         : 1
+    zero_initialize                    : true
+
+noise_scheduler_kwargs:
+  num_train_timesteps: 1000
+  beta_start:          0.00085
+  beta_end:            0.012
+  beta_schedule:       "linear"
+  steps_offset:        1
+  clip_sample:         false
+
+data_class:         "S3VideosDataset"
+train_data:
+  ldmk_use_gaussian: true
+  data_prefix:      's3://ljj-sh/Datasets/Videos'
+  data_dir:         's3://ljj-sh/Datasets/Videos/msgpacks/videos_231002/'
+  resolution:       [256,256]
+  frame_stride:     1  
+  video_length:     1  # 训练 adapter 的时候是 image_finetune = True, video_length 设为 1
+
+num_workers: 24
+
+validation_data:
+  prompts:
+    - "The person is smiling"
+    - "The person is happy"
+    - "The person is sad"
+    - "The person is joy"
+  num_inference_steps: 25
+  guidance_scale: 8.
+  vis_img_path: "/data00/Datasets/DECA_examples/10040716/deca/0/vis.jpg" # 填写验证时作为 condition 的图片路径
+
+trainable_modules:
+  - "motion_modules."
+
+unet_checkpoint_path: ""
+
+learning_rate:    1.e-4
+train_batch_size: 128  # 48
+
+max_train_epoch:      1000
+max_train_steps:      -1
+checkpointing_epochs: 10
+checkpointing_steps:  -1
+
+validation_steps:       10
+validation_steps_tuple: [2, 50]
+
+global_seed: 42
+mixed_precision_training: true
+enable_xformers_memory_efficient_attention: True
+
+is_debug: False
