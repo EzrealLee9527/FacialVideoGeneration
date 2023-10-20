@@ -125,6 +125,7 @@ def main(args):
     
     time_str = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     savedir = f"samples/{Path(args.config).stem}-{time_str}"
+    s3_savedir = "s3://ljj-sh/" + savedir
     os.makedirs(savedir)
 
     config  = OmegaConf.load(args.config)
@@ -285,8 +286,12 @@ def main(args):
 
     samples = torch.concat(samples)
     save_videos_grid(samples, f"{savedir}/sample.gif", n_rows=4)
-
     OmegaConf.save(config, f"{savedir}/config.yaml")
+
+    os.system(f'aws --endpoint-url=https://tos-s3-cn-shanghai.ivolces.com s3 sync {savedir} {s3_savedir}')
+    smart_remove(savedir)
+    print(f"move samples from {savedir} to {s3_savedir}")
+  
 
 
 if __name__ == "__main__":
