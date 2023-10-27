@@ -1,0 +1,81 @@
+angelababy:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/angelababy.safetensors
+  gender: female
+
+angelina:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/Angelina_joile.safetensors
+  gender: female
+
+blackwidow:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/blackwidow.safetensors
+  gender: female
+
+elon:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/elon_musk.safetensors
+  gender: male
+
+emlia_clark:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/Emilia_Clarke.safetensors
+  gender: female
+
+emma:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/emma_watson.safetensors
+  gender: female
+
+emma_stone:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/EmmaStone.safetensors
+  gender: female
+
+fanbingbing:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/fanbingbing.safetensors
+  gender: female
+
+hathaway:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/Anne_Hathaway.safetensors
+  gender: female
+
+inch: 
+  lora_path: /data00/models/DreamBooth_LoRA/mj_loras/inch_lora1.safetensors
+  gender: male
+
+jay:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/jay.safetensors
+  gender: male
+
+johnny_depp:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/johnny_depp.safetensors
+  gender: male
+
+leonardo:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/leonardo.safetensors
+  gender: male
+
+liuhaocun:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/liuhaocun.safetensors
+  gender: female
+
+liushishi:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/liushishi.safetensors
+  gender: female
+
+liuyifei:
+  lora_path: /data00/models/DreamBooth_LoRA/civitai_lora/liuyifei.safetensors
+  gender: female
+
+mj38:
+  lora_path: /data00/models/DreamBooth_LoRA/mj_loras/38_0-000010.safetensors
+  gender: female
+
+tom_holland:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/tom-holland.safetensors
+  gender: male
+
+yangmi:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/yangmi_v4.safetensors
+  gender: female
+
+zhaoliying:
+  lora_path: /data00/bzd/DECA_llz/civitai_lora/zhaoliying.safetensors
+  gender: female
+
+

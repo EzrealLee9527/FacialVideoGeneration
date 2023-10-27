@@ -1,0 +1,169 @@
+video0:
+  video_id: 0
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 2
+  W: 512
+  prompt: a person is smiling, bright, smile, extremely happy, simple background, indoor background, laboratory uniform,realistic,solo,High detailed,High precision, Hyper quality,
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+video1:
+  video_id: 1
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 1
+  W: 1008
+  prompt: a person is smiling, bright, smile, clever, sneaky, street background, leather outfit,realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+video2:
+  video_id: 2
+  start_f_idx: 5
+  video_length: 15
+  frame_stride: 1
+  W: 512
+  prompt: a person is laughing, bright, smile, showing off, happy, eyebrow lifting, simple background, indoor background, leather outfit,realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+video3:
+  video_id: 3
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 2
+  W: 686
+  prompt: a person is yelling, bright, angry, simple background, indoor background, gray suit,realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+  
+
+video4:
+  video_id: 4
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 1
+  W: 512
+  prompt: a person looks confused, bright, blink, simple background, indoor background, suit outfit,realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video5:
+  video_id: 5
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 2
+  W: 587
+  prompt: a person is smiling, bright, smile, happy, simple background, indoor background, sleeping pajamas,realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video6:
+  video_id: 6
+  start_f_idx: 1
+  video_length: 15
+  frame_stride: 2
+  W: 970
+  prompt: a person is talking, bright, angry, white outfit, street background, realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video7:
+  video_id: 7
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 2
+  W: 512
+  prompt: a person, shake head, roll eyes, dismissive, bright, white outfit, indoor background, realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video8:
+  video_id: 8
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 18
+  W: 662
+  prompt: a person is talking, condescending, bright, black suit, upper-body, brick-wall background, realistic,solo,High detailed, High precision, Hyper quality, beautiful
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video9:
+  video_id: 9
+  start_f_idx: 1
+  video_length: 15
+  frame_stride: 20
+  W: 435
+  prompt: a person is blinking eyes, innocent, bright, brick-wall background, realistic,solo,High detailed, High precision, Hyper quality, beautiful face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video10:
+  video_id: 10
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 1
+  W: 769
+  prompt: a person is laughing, smile, very happy, bright, indoor background, playing piano, realistic,solo,High detailed, High precision, Hyper quality, beautiful face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video11:
+  video_id: 11
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 3
+  W: 630
+  prompt: a person is smiling, very happy, bright, simple background, white background, realistic,solo,High detailed, High precision, Hyper quality, beautiful face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video12:
+  video_id: 12
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 4
+  W: 640
+  prompt: a person is dressing up, bright, simple background, indoor background, realistic,solo,High detailed, High precision, Hyper quality, beautiful face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video13:
+  video_id: 13
+  start_f_idx: 1
+  video_length: 15
+  frame_stride: 2
+  W: 1110
+  prompt: a person is smiling, happy, bright, simple background, indoor background, realistic,solo,High detailed, High precision, Hyper quality, beautiful face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video14:
+  video_id: 14
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 20
+  W: 647
+  prompt: a person, happy, bright, simple background, indoor background, realistic,solo,High detailed, High precision, Hyper quality, sad face
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video15:
+  video_id: 15
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 1
+  W: 512
+  prompt: a person is smiling, happy, bright, simple background, indoor background, blink eyes, cute,realistic,solo,High detailed, High precision, Hyper quality, beautiful face, 
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+video16:
+  video_id: 16
+  start_f_idx: 0
+  video_length: 15
+  frame_stride: 1
+  W: 512
+  prompt: a person is smiling, happy, bright, simple background, indoor background, cute, handsome,realistic,solo,High detailed, High precision, Hyper quality, beautiful face, 
+  n_prompt:
+    uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+

@@ -1,0 +1,59 @@
+female:
+  prompt:
+  - a person is smiling, High detailed, High precision, Hyper quality, Fine luster,
+    UHD,16k, masterpiece, 1 woman, 1 woman, 1 woman, 1 woman,
+    female, female, female, pure yellow background, business photo, business photo
+    style, half body shot, beautiful face, front view, grey suit, business, business,
+    {best quaility, masterpiece, ultra-realistic}
+
+  - 1girl, bright, beautiful eyes,cute, beautiful face,smile, happy, simple background, street background,
+    realistic,solo,High detailed,High precision, Hyper quality, beautiful woman, 
+
+  - 1girl, bright, brown_hair,long hair,straight hair, beautiful eyes,cute, beautiful face,smile, happy, simple background, white background,
+    realistic,solo,High detailed,High precision, Hyper quality, beautiful woman,
+
+  - 1girl, bright, black_hair,long hair,straight hair, beautiful eyes,cute, beautiful face,smile, happy,simple background, blue background,
+    realistic,solo,High detailed,High precision, Hyper quality, beautiful woman,
+
+  n_prompt:
+  - (worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on
+    the background:1.3), rendered, 3d
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+  
+male:
+  prompt:
+  - a man is smiling, High detailed, High precision, Hyper quality, Fine luster,
+    UHD,16k, masterpiece, 1man, 1man, 1man, 1man, pure yellow background, business photo, business photo
+    style, half body shot, beautiful face, front view, grey suit, business, business,
+    {best quaility, masterpiece, ultra-realistic}
+
+  - 1boy, bright, black_hair, beautiful eyes, handsome, beautiful face,smile, happy, simple background, street background,
+    realistic,solo,High detailed,High precision, Hyper quality, handsome man,
+
+  - 1boy, bright, black_hair, short hair, straight hair, beautiful eyes, handsome beautiful face,smile, happy, simple background, white background,
+    realistic,solo,High detailed,High precision, Hyper quality, handsome man,
+
+  - 1boy, bright, brown_hair, short hair, straight hair, beautiful eyes, handsome, beautiful face,smile, happy,simple background, blue background,
+    realistic,solo,High detailed,High precision, Hyper quality, handsome man,
+
+  n_prompt:
+
+  - (worst quality, low quality, bad_pictures, negative_hand-neg:1.2), (shadow on
+    the background:1.3), rendered, 3d
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
+
+  - uneven eyes,(worst quality, low quality, bad_pictures, negative_hand-neg:1.2), 
+    lowres, bad anatomy, bad hands,((monochrome)),((grayscale)),((watermark))
