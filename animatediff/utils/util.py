@@ -9,13 +9,13 @@ import torch.distributed as dist
 
 from tqdm import tqdm
 from einops import rearrange
-
+import moviepy.editor
 
 def zero_rank_print(s):
     if (not dist.is_initialized()) and (dist.is_initialized() and dist.get_rank() == 0): print("### " + s)
 
 
-def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=6, fps=8):
+def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=6, fps=8,resize_shape=None):
     videos = rearrange(videos, "b c t h w -> t b c h w")
     outputs = []
     for x in videos:
@@ -27,6 +27,9 @@ def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=6, f
         outputs.append(x)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     imageio.mimsave(path, outputs, fps=fps)
+    video=moviepy.editor.VideoFileClip(path)
+    if resize_shape is not None:
+        video=video.resize(newsize=resize_shape)
 
 
 # DDIM Inversion
