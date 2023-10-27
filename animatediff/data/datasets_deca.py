@@ -30,13 +30,13 @@ import pickle
 # from skimage.transform import resize
 import facer
 
-def read_vis_single(vis_img_io, resize_w):
+def read_vis_single(vis_img_io, resize_w,resize_h=None):
 
     # img = imageio.imread("/data00/Datasets/DECA_examples/10040716/1/vis.jpg")
     img = Image.open(vis_img_io).convert("RGB")
-
-    w = 224
-    resize_transform = transforms.Resize((resize_w, resize_w))
+    if resize_h is None:
+        resize_h=resize_w
+    resize_transform = transforms.Resize((resize_h,resize_w))
     img = resize_transform(img)
 
     return np.array(img)
@@ -260,11 +260,11 @@ class S3VideosDataset(Dataset):
                     texts = frames_captions,
                 )
                 
-                print("Successfully Get One Data")
+                # print("Successfully Get One Data")
                 break
             except Exception as e:
                 f_idx += 1
-                print("Error: ", e)
+                # print("Error: ", e)
                 continue
         
         return sample
